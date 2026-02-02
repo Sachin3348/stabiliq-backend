@@ -1,0 +1,55 @@
+# Render Blueprint for Stabiliq Member Dashboard API
+# https://render.com/docs/blueprint-spec
+
+previews:
+  generation: automatic
+
+services:
+  - type: web
+    runtime: node
+    name: stabiliq-api
+    repo:  https://github.com/Sachin3348/stabiliq-backend.git
+    region: frankfurt
+
+    buildCommand: npm ci
+    startCommand: npm start
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 8000
+      # MongoDB (use MongoDB Atlas or external; set in Render dashboard or link below)
+      - key: MONGO_URL
+        value: mongodb+srv://stabiliq-admin:iiAev7KtAuslNTES@stabiliq.pnzd5xp.mongodb.net
+        sync: false
+      - key: DB_NAME
+        value: stabiliq
+        sync: false
+      # Auth
+      - key: JWT_SECRET
+        value: stabiliasdsadasdq_secrasdsadet_key_change_in_prasdsadasdoduction
+        generateValue: true
+      # Optional: CORS allowed origins (comma-separated)
+      - key: CORS_ORIGINS
+        sync: false
+
+    # Optional: custom domain
+    # domains:
+    #   - api.stabiliq.example.com
+
+    # Optional: scaling
+    scaling:
+      minInstances: 1
+      maxInstances: 3
+      targetMemoryPercent: 80
+      targetCPUPercent: 80
+
+    # Optional: health check
+    healthCheckPath: /api
+
+    # Optional: restrict deploys
+    # autoDeploy: false
+
+    # Graceful shutdown (aligns with your SIGTERM handling)
+    maxShutdownDelaySeconds: 30
