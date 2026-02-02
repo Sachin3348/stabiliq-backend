@@ -16,7 +16,7 @@ services:
 
     envVars:
       - key: NODE_ENV
-        value: production
+        value: development
       - key: PORT
         value: 8000
       # MongoDB (use MongoDB Atlas or external; set in Render dashboard or link below)
