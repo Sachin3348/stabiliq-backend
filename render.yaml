@@ -21,14 +21,11 @@ services:
         value: 8000
       # MongoDB (use MongoDB Atlas or external; set in Render dashboard or link below)
       - key: MONGO_URL
-        value: mongodb+srv://stabiliq-admin:iiAev7KtAuslNTES@stabiliq.pnzd5xp.mongodb.net
         sync: false
       - key: DB_NAME
-        value: stabiliq
         sync: false
       # Auth
       - key: JWT_SECRET
-        value: stabiliasdsadasdq_secrasdsadet_key_change_in_prasdsadasdoduction
         generateValue: true
       # Optional: CORS allowed origins (comma-separated)
       - key: CORS_ORIGINS
