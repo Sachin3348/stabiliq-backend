@@ -11,7 +11,7 @@ services:
     repo:  https://github.com/Sachin3348/stabiliq-backend.git
     region: frankfurt
 
-    buildCommand: npm ci
+    buildCommand: npm ci && npm run build
     startCommand: npm start
 
     envVars:
