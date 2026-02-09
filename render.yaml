@@ -11,8 +11,10 @@ services:
     repo:  https://github.com/Sachin3348/stabiliq-backend.git
     region: frankfurt
 
+    # TypeScript: build outputs to dist/
     buildCommand: npm ci && npm run build
-    startCommand: npm start
+    # Must run compiled JS from dist/ (do not use node src/server.js)
+    startCommand: node dist/server.js
 
     envVars:
       - key: NODE_ENV
