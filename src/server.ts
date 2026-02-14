@@ -18,10 +18,9 @@ const PORT = env.PORT;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const corsOrigins = env.CORS_ORIGINS.split(',').map((o: string) => o.trim());
 app.use(
   cors({
-    origin: corsOrigins.includes('*') ? true : corsOrigins,
+    origin: true, // allow all origins
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
