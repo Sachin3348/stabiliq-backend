@@ -18,7 +18,7 @@ const PORT = env.PORT;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-const corsOrigins = env.CORS_ORIGINS.split(',').map((o) => o.trim());
+const corsOrigins = env.CORS_ORIGINS.split(',').map((o: string) => o.trim());
 app.use(
   cors({
     origin: corsOrigins.includes('*') ? true : corsOrigins,

@@ -8,7 +8,7 @@ export async function connectDB(): Promise<mongoose.mongo.Db> {
   if (!MONGO_URL || !DB_NAME) {
     throw new Error('MONGO_URL and DB_NAME must be set in environment variables');
   }
-  await mongoose.connect(MONGO_URL, { dbName: DB_NAME });
+  await mongoose.connect(MONGO_URL, { dbName: DB_NAME } as mongoose.ConnectOptions);
   const connectionDb = mongoose.connection.db;
   if (!connectionDb) {
     throw new Error('MongoDB connection failed: no db instance');

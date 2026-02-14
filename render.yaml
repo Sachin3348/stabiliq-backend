@@ -11,8 +11,8 @@ services:
     repo:  https://github.com/Sachin3348/stabiliq-backend.git
     region: frankfurt
 
-    # TypeScript: build outputs to dist/
-    buildCommand: npm ci && npm run build
+    # Install all deps including devDependencies (needed for tsc and @types/*)
+    buildCommand: npm ci --include=dev && npm run build
     # Must run compiled JS from dist/ (do not use node src/server.js)
     startCommand: node dist/server.js
 
