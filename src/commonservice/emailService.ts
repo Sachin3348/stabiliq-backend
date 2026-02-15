@@ -34,11 +34,21 @@ async function getGmailAccessToken(): Promise<string> {
     'https://developers.google.com/oauthplayground'
   );
   oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
-  const { token } = await oauth2Client.getAccessToken();
-  if (!token) {
-    throw new Error('Failed to obtain Gmail access token');
+  try {
+    const { token } = await oauth2Client.getAccessToken();
+    if (!token) {
+      throw new Error('Failed to obtain Gmail access token');
+    }
+    return token;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('invalid_grant')) {
+      throw new Error(
+        'Gmail refresh token invalid or expired. Re-authorize at https://developers.google.com/oauthplayground or use SMTP (GMAIL_APP_PASSWORD).'
+      );
+    }
+    throw err;
   }
-  return token;
 }
 
 /** Create a Nodemailer transporter for Gmail OAuth2 (fresh token each time) */
@@ -89,7 +99,15 @@ async function getTransporter(): Promise<Transporter | null> {
  * If neither is configured, logs and returns success: false.
  */
 export async function sendMail(options: SendMailOptions): Promise<SendMailResult> {
-  const transport = await getTransporter();
+  let transport: Transporter | null = null;
+  try {
+    transport = await getTransporter();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('Email transport failed (e.g. Gmail OAuth invalid_grant)', { error: message });
+    return { success: false, error: message };
+  }
+
   if (!transport) {
     const hint = isGmailOAuthConfigured()
       ? 'Check Gmail OAuth2 credentials'
