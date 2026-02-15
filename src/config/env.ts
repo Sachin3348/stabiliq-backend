@@ -13,13 +13,15 @@ export const env = {
   JWT_EXPIRE_DAYS: parseInt(process.env.JWT_EXPIRE_DAYS ?? '30', 10),
   /** Comma-separated origins; '*' means allow all */
   CORS_ORIGINS: process.env.CORS_ORIGINS ?? '*',
-  /** Email: Gmail OAuth2 (preferred) or SMTP */
+  /** Email: SendGrid (preferred, works on Render) or Gmail/SMTP */
+  SENDGRID_API_KEY: (process.env.SENDGRID_API_KEY ?? '').replace(/^["']|["']$/g, '').trim(),
+  MAIL_FROM: (process.env.MAIL_FROM ?? 'noreply@stabiliq.in').replace(/^["']|["']$/g, '').trim(),
+  /** Gmail OAuth2 (fallback, may not work on Render due to SMTP restrictions) */
   GMAIL_USER: process.env.GMAIL_USER ?? '',
   GMAIL_CLIENT_ID: process.env.GMAIL_CLIENT_ID ?? '',
   GMAIL_CLIENT_SECRET: process.env.GMAIL_CLIENT_SECRET ?? '',
   GMAIL_REFRESH_TOKEN: (process.env.GMAIL_REFRESH_TOKEN ?? '').replace(/^["']|["']$/g, '').trim(),
-  MAIL_FROM: (process.env.MAIL_FROM ?? process.env.GMAIL_USER ?? 'noreply@stabiliq.in').replace(/^["']|["']$/g, '').trim(),
-  /** Fallback SMTP (used only when Gmail OAuth2 is not set) */
+  /** Fallback SMTP */
   SMTP_HOST: process.env.SMTP_HOST ?? '',
   SMTP_PORT: parseInt(process.env.SMTP_PORT ?? '587', 10),
   SMTP_SECURE: process.env.SMTP_SECURE === 'true',
