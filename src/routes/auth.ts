@@ -3,8 +3,12 @@ import { body } from 'express-validator';
 import { authController } from '../controllers/authController';
 import { getCurrentUser } from '../middlewares/auth';
 import { validate } from '../middlewares/validate';
+import { requestTimeout } from '../middlewares/requestTimeout';
 
 const router = Router();
+
+// Auth routes can hang on DB or email; return 504 after 25s instead of no response
+router.use(requestTimeout(25000));
 
 router.post(
   '/send-otp',

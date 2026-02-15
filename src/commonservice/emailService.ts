@@ -25,6 +25,8 @@ function isGmailOAuthConfigured(): boolean {
   return !!(GMAIL_USER && GMAIL_CLIENT_ID && GMAIL_CLIENT_SECRET && GMAIL_REFRESH_TOKEN);
 }
 
+const GMAIL_OAUTH_TIMEOUT_MS = 15000; // 15s so auth routes don't hang
+
 /** Get Gmail OAuth2 access token from refresh token */
 async function getGmailAccessToken(): Promise<string> {
   const { GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN } = env;
@@ -34,12 +36,22 @@ async function getGmailAccessToken(): Promise<string> {
     'https://developers.google.com/oauthplayground'
   );
   oauth2Client.setCredentials({ refresh_token: GMAIL_REFRESH_TOKEN });
-  try {
+
+  const tokenPromise = (async () => {
     const { token } = await oauth2Client.getAccessToken();
-    if (!token) {
-      throw new Error('Failed to obtain Gmail access token');
-    }
+    if (!token) throw new Error('Failed to obtain Gmail access token');
     return token;
+  })();
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(
+      () => reject(new Error('Gmail OAuth timeout. Check refresh token or use SMTP.')),
+      GMAIL_OAUTH_TIMEOUT_MS
+    );
+  });
+
+  try {
+    return await Promise.race([tokenPromise, timeoutPromise]);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     if (msg.includes('invalid_grant')) {
@@ -64,6 +76,9 @@ async function createGmailTransporter(): Promise<Transporter> {
       refreshToken: env.GMAIL_REFRESH_TOKEN,
       accessToken,
     },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
 }
 
@@ -82,6 +97,9 @@ function getSmtpTransporter(): Transporter | null {
       user: SMTP_USER,
       pass: SMTP_PASS,
     },
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
   });
   return smtpTransporter;
 }

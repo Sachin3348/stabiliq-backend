@@ -23,7 +23,7 @@ const userOtpVerificationSchema = new mongoose.Schema(
     expiresAt: {
       type: Date,
       required: true,
-      index: true,
+      // index defined below via schema.index() for TTL
     },
     consumed: {
       type: Boolean,
