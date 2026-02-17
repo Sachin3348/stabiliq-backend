@@ -11,6 +11,7 @@ import dashboardRoutes from './routes/dashboard';
 import coursesRoutes from './routes/courses';
 import profileRoutes from './routes/profile';
 import financialAssistanceRoutes from './routes/financial_assistance';
+import paymentRoutes from './routes/payment';
 
 const app = express();
 const PORT = env.PORT;
@@ -33,6 +34,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/courses', coursesRoutes);
 app.use('/api/profile', profileRoutes);
 app.use('/api/financial-assistance', financialAssistanceRoutes);
+app.use('/api/payment', paymentRoutes);
 
 app.use(errorHandler);
 

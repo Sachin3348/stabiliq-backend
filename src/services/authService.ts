@@ -62,7 +62,6 @@ export const authService = {
     phone: string,
     otp: string,
     name: string,
-    plan: string = 'basic'
   ): Promise<VerifyOtpResult> {
     const valid = await userOtpVerificationRepository.validateAndConsume(email, otp);
     if (!valid) {
@@ -81,7 +80,6 @@ export const authService = {
       email,
       name,
       phone,
-      plan,
       enrollmentDate,
       isActive: true,
     });

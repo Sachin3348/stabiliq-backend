@@ -4,3 +4,4 @@ export { coursesService } from './coursesService';
 export { profileService } from './profileService';
 export { financialAssistanceService } from './financialAssistanceService';
 export { statusCheckService } from './statusCheckService';
+export { paymentService } from './paymentService';

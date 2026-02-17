@@ -28,7 +28,7 @@ export const dashboardService = {
     return {
       coursesCompleted: 0,
       daysUntilFinancialAssistance: daysUntilFinancial,
-      planType: user.plan || 'basic',
+      planType: user.plan || '',
       enrollmentDate: enrollmentDate ? new Date(enrollmentDate).toISOString() : null,
       daysSinceEnrollment,
     };

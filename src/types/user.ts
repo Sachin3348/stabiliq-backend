@@ -4,7 +4,7 @@ export interface UserDto {
   email: string;
   name: string;
   phone: string;
-  plan: string;
+  plan?: string;
   enrollmentDate: string | null;
   isActive: boolean;
 }
@@ -14,7 +14,7 @@ export interface UserDocument {
   email: string;
   name: string;
   phone: string;
-  plan: string;
+  plan?: string;
   enrollmentDate: Date | null;
   createdAt: Date;
   isActive: boolean;

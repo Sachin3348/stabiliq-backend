@@ -28,8 +28,7 @@ const userSchema = new mongoose.Schema(
     },
     plan: {
       type: String,
-      enum: ['basic', 'pro'],
-      default: 'basic',
+      enum: ['basic', 'pro']
     },
     enrollmentDate: {
       type: Date,
@@ -63,7 +62,7 @@ export interface IUserDoc extends mongoose.Document {
   email: string;
   name: string;
   phone: string;
-  plan: string;
+  plan?: string;
   enrollmentDate: Date | null;
   createdAt: Date;
   isActive: boolean;

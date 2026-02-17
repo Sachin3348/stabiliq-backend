@@ -7,7 +7,7 @@ function toUserDto(doc: IUserDoc): UserDto {
     email: doc.email,
     name: doc.name,
     phone: doc.phone,
-    plan: doc.plan,
+    plan: doc.plan || '',
     enrollmentDate: doc.enrollmentDate ? doc.enrollmentDate.toISOString() : null,
     isActive: doc.isActive,
   };
