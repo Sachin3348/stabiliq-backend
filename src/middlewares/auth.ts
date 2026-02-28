@@ -3,10 +3,12 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 import { AppError } from './AppError';
 import type { JwtPayload } from '../types/auth';
+import mongoose from 'mongoose';
+const ObjectId = mongoose.Types.ObjectId;
 
 export function createAccessToken(data: JwtPayload): string {
   const options: jwt.SignOptions = { expiresIn: `${env.JWT_EXPIRE_DAYS}d` };
-  return jwt.sign({ sub: data.sub, id: data.id }, env.JWT_SECRET, options);
+  return jwt.sign({ sub: data.sub, id: data.id, mobile: data.mobile }, env.JWT_SECRET, options);
 }
 
 export function verifyToken(token: string): JwtPayload {
@@ -15,7 +17,7 @@ export function verifyToken(token: string): JwtPayload {
     if (typeof payload.sub !== 'string' || typeof payload.id !== 'string') {
       throw new AppError('Invalid token', 401);
     }
-    return { sub: payload.sub, id: payload.id };
+    return { sub: payload.sub, id: new ObjectId(payload.id), mobile: payload.mobile };
   } catch (err) {
     if (err instanceof jwt.TokenExpiredError) {
       throw new AppError('Token has expired', 401);

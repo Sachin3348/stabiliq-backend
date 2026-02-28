@@ -72,7 +72,7 @@ export const authService = {
 
     if (user) {
       const userData: UserDto = userRepository.toUserDto(user);
-      const token = createAccessToken({ sub: userData.email, id: userData.id });
+      const token = createAccessToken({ sub: userData.email, id: userData.id, mobile: userData.phone });
       return { success: true, token, user: userData };
     }
 
@@ -84,7 +84,7 @@ export const authService = {
       isActive: true,
     });
     const userData: UserDto = userRepository.toUserDto(user);
-    const token = createAccessToken({ sub: userData.email, id: userData.id });
+    const token = createAccessToken({ sub: userData.email, id: userData.id, mobile: userData.phone });
     return { success: true, token, user: userData };
   },
 

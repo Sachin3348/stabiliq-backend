@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose, { ObjectId } from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
 const userSchema = new mongoose.Schema(
@@ -58,7 +58,7 @@ userSchema.set('toJSON', {
 });
 
 export interface IUserDoc extends mongoose.Document {
-  id: string;
+  id: ObjectId;
   email: string;
   name: string;
   phone: string;

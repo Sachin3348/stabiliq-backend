@@ -1,13 +1,20 @@
 import { Request, Response } from 'express';
 import { paymentService } from '../services/paymentService';
 import { sendError, sendSuccess } from '../utils/response';
+import { MEMBERSHIP_PLANS } from '../utils/constants';
 
 export const paymentController = {
   async create(req: Request, res: Response, next: (err: unknown) => void): Promise<void> {
     try {
       const body = req.body as Parameters<typeof paymentService.create>[0];
-      const result = await paymentService.create(body);
+      const result = await paymentService.create({
+        ...body, 
+        userId: String(req.user?.id) || '', 
+        mobile: req.user?.mobile || '',
+        amount: MEMBERSHIP_PLANS[body.plan as 'basic' | 'pro'].amount,
+      });
       sendSuccess(res, 201, result);
+
     } catch (err) {
       next(err);
     }

@@ -1,6 +1,8 @@
+import mongoose from "mongoose";
+
 /** User as returned in API responses (no internal fields) */
 export interface UserDto {
-  id: string;
+  id: mongoose.Types.ObjectId;
   email: string;
   name: string;
   phone: string;

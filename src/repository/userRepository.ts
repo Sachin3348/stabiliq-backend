@@ -3,7 +3,7 @@ import type { UserDto } from '../types/user';
 
 function toUserDto(doc: IUserDoc): UserDto {
   return {
-    id: doc.id,
+    id: doc._id,
     email: doc.email,
     name: doc.name,
     phone: doc.phone,
