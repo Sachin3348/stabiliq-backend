@@ -31,15 +31,15 @@ export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobil
     let merchantId = process.env.PST_PHONEPE_MERCHANT_ID
     let saltKey = process.env.PST_PHONEPE_SALT_KEY
     let saltKeyIndex = process.env.PST_SALT_KEY_INDEX
-
+    const amountInPaisa = Number(amount) * 100 // converting to paisa as PhonePe accepts amount in paisa
     const payload = {
         merchantId,
         merchantTransactionId,
-        amount: Number(amount),
+        amount: amountInPaisa,
         merchantUserId: userId,
-        redirectUrl: `${process.env.BASE_URL}/payment/status`,
+        redirectUrl: `${process.env.STABILIQ_FE_URL}/payment-status`,
         redirectMode: "POST",
-        callbackUrl: `${process.env.BASE_URL}/payment/callback`,
+        callbackUrl: `${process.env.STABILIQ_BACKEND_URL}/api/payment/callback`,
         paymentInstrument: {
             type: 'PAY_PAGE'
         },
@@ -71,7 +71,7 @@ export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobil
         merchantId,
         merchantTransactionId,
         userId: userId,
-        amount: Number(amount),
+        amount: amountInPaisa,
         paymentStatus: PAYMENT_STATUS.paymentInitiated,
         type: TRANSACTION_TYPE.payment,
     }

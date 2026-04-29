@@ -1,34 +1,44 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Request, Response } from 'express';
 import { paymentController } from '../controllers/paymentController';
-import { getCurrentUser } from '../middlewares/auth';
+import { getCurrentUser, phonepeS2SCallbackAuth } from '../middlewares/auth';
 
 const router = Router();
 
 /** Create a payment transaction (e.g. init) */
-router.post('/', getCurrentUser, (req: Request, res: Response, next: NextFunction) =>
-  paymentController.create(req, res, next)
+router.post('/', getCurrentUser, (req: Request, res: Response) =>
+  paymentController.create(req, res)
 );
 
-/** Get current user's transactions (requires auth) - must be before /:id */
-router.get('/user/me', getCurrentUser, (req: Request, res: Response, next: NextFunction) =>
-  paymentController.getMyTransactions(req, res, next)
-);
+//called when user complete the payment (UI Callback)
+router.post('/status', paymentController.handleUserPaymentCompletion) 
 
-/** Get transaction by merchant transaction ID - must be before /:id */
-router.get(
-  '/merchant/:merchantTransactionId',
-  (req: Request, res: Response, next: NextFunction) =>
-    paymentController.getByMerchantTransactionId(req, res, next)
-);
+//called when payment reach a terminal state (failed, complete)
+router.post('/callback', phonepeS2SCallbackAuth, paymentController.processPaymentS2SCallback) 
 
-/** Get transaction by ID */
-router.get('/:id', (req: Request, res: Response, next: NextFunction) =>
-  paymentController.getById(req, res, next)
-);
+//called when refund transaction reach a terminal state
+// router.post('/refund', phonepeS2SCallbackAuth, paymentController.processRefundS2Scallback)
 
-/** Update transaction (e.g. callback) */
-router.patch('/:id', (req: Request, res: Response, next: NextFunction) =>
-  paymentController.update(req, res, next)
-);
+
+// /** Get current user's transactions (requires auth) - must be before /:id */
+// router.get('/user/me', getCurrentUser, (req: Request, res: Response, next: NextFunction) =>
+//   paymentController.getMyTransactions(req, res, next)
+// );
+
+// /** Get transaction by merchant transaction ID - must be before /:id */
+// router.get(
+//   '/merchant/:merchantTransactionId',
+//   (req: Request, res: Response, next: NextFunction) =>
+//     paymentController.getByMerchantTransactionId(req, res, next)
+// );
+
+// /** Get transaction by ID */
+// router.get('/:id', (req: Request, res: Response, next: NextFunction) =>
+//   paymentController.getById(req, res, next)
+// );
+
+// /** Update transaction (e.g. callback) */
+// router.patch('/:id', (req: Request, res: Response, next: NextFunction) =>
+//   paymentController.update(req, res, next)
+// );
 
 export default router;

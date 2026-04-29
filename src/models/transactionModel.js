@@ -47,7 +47,7 @@ const paymentTransactionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
-    isApplicationFeeProcessed: {
+    isPaymentProcessed: {
       type: Boolean,
       default: false,
     },

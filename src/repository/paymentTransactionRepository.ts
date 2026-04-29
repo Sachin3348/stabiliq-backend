@@ -17,7 +17,7 @@ function toDto(doc: IPaymentTransactionDoc): PaymentTransactionDto {
     isUiCallbackProcessed: doc.isUiCallbackProcessed,
     paymentInstrument: doc.paymentInstrument as Record<string, unknown> | undefined,
     isDeleted: doc.isDeleted,
-    isApplicationFeeProcessed: doc.isApplicationFeeProcessed,
+    isPaymentProcessed: doc.isPaymentProcessed,
     gatewayOrderId: doc.gatewayOrderId,
     plan: doc.plan as 'basic' | 'pro' | undefined,
     createdAt: doc.createdAt?.toISOString(),
@@ -37,14 +37,25 @@ export interface CreatePaymentTransactionInput {
   refundId?: string;
   isUiCallbackProcessed?: boolean;
   paymentInstrument?: Record<string, unknown>;
-  isApplicationFeeProcessed?: boolean;
+  isPaymentProcessed?: boolean;
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
 }
 
+export interface PopulateOptions {
+  userId?: boolean;
+  refundId?: boolean;
+}
+
 export const paymentTransactionRepository = {
-  async findOne(query: any): Promise<IPaymentTransactionDoc | null> {
-    return PaymentTransaction.findOne(query).exec();
+  async findOne(query: any, populate?: PopulateOptions): Promise<IPaymentTransactionDoc | null> {
+    let q = PaymentTransaction.findOne(query);
+    if (populate?.userId) q = q.populate('userId');
+    if (populate?.refundId) q = q.populate('refundId');
+    return q.exec();
+  },
+  async findOneAndUpdate(query: any, update: any, newOption: boolean = true): Promise<IPaymentTransactionDoc | null> {
+    return PaymentTransaction.findOneAndUpdate(query, update, { new: newOption }).exec();
   },
 
   async create(data: CreatePaymentTransactionInput): Promise<IPaymentTransactionDoc> {

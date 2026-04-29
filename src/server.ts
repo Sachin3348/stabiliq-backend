@@ -12,6 +12,7 @@ import coursesRoutes from './routes/courses';
 import profileRoutes from './routes/profile';
 import financialAssistanceRoutes from './routes/financial_assistance';
 import paymentRoutes from './routes/payment';
+const SSE = require("express-sse");
 
 const app = express();
 const PORT = env.PORT;
@@ -27,6 +28,7 @@ app.use(
     allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
+const sse = new SSE(["initial event data"]);
 
 app.use('/api', apiRoutes);
 app.use('/api/auth', authRoutes);
@@ -65,4 +67,7 @@ const startServer = async (): Promise<void> => {
 
 startServer();
 
-export default app;
+module.exports ={
+    app,
+    sse
+}

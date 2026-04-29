@@ -18,6 +18,12 @@ export const userRepository = {
     return User.findOne({ email }).exec();
   },
 
+  async findOne(query: any): Promise<IUserDoc | null> {
+    return User.findOne(query).exec();
+  },
+  async findOneAndUpdate(query: any, update: any): Promise<IUserDoc | null> {
+    return User.findOneAndUpdate(query, update, { new: true }).exec();
+  },
   async create(data: {
     email: string;
     name: string;

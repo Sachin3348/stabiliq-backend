@@ -43,7 +43,7 @@ export interface PaymentTransactionDto {
   isUiCallbackProcessed?: boolean;
   paymentInstrument?: Record<string, unknown>;
   isDeleted?: boolean;
-  isApplicationFeeProcessed?: boolean;
+  isPaymentProcessed?: boolean;
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
   createdAt?: string;

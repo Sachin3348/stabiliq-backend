@@ -4,6 +4,8 @@ import { env } from '../config/env';
 import { AppError } from './AppError';
 import type { JwtPayload } from '../types/auth';
 import mongoose from 'mongoose';
+import { base64StrToJson, calculateChecksum } from '../utils';
+import { paymentTransactionRepository } from '../repository';
 const ObjectId = mongoose.Types.ObjectId;
 
 export function createAccessToken(data: JwtPayload): string {
@@ -41,5 +43,38 @@ export function getCurrentUser(req: Request, res: Response, next: NextFunction):
     const statusCode = error instanceof AppError ? error.statusCode : 401;
     const message = error instanceof Error ? error.message : 'Not authenticated';
     res.status(statusCode).json({ detail: message });
+  }
+}
+
+export const phonepeS2SCallbackAuth = async function(req: Request, res: Response, next: NextFunction){
+  try{
+      const receivedChecksum = req.headers['x-verify']
+      if(!receivedChecksum){
+          return res.status(401).send({ status: false, message: "TOKEN_NOT_FOUND"});
+      }
+      const payload = req.body?.response || ''
+      const {data} = base64StrToJson(payload)
+
+      const merchantId = data?.merchantId
+      if(!merchantId){
+          return res.status(401).send({status: false, message: "UNAUTHORIZED: merchantId is invalid"});
+      }
+
+      let saltKey = process.env.PST_PHONEPE_SALT_KEY || ''
+      let saltKeyIndex = process.env.PST_SALT_KEY_INDEX || ''
+
+      const checksum = calculateChecksum({payload, saltKey, saltKeyIndex, apiEndpoint: ''})
+
+      if(receivedChecksum !== checksum){
+          return res.status(401).send({status: false, message: "UNAUTHORIZED"});
+      }
+      
+      const transaction = await paymentTransactionRepository.findOne({merchantTransactionId: data?.merchantTransactionId, amount: data?.amount})
+      if(!transaction){
+          return res.status(401).send({status: false, message: "UNAUTHORIZED"});
+      }
+      return next();
+  }catch(exception){
+      return res.status(401).send({status: false, message: "INVALID_TOKEN"});
   }
 }

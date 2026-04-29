@@ -15,6 +15,7 @@ export const PAYMENT_FAILED_STATUS = [
   'TIMED_OUT',
   'PAYMENT_DECLINED',
   'FAILED',
+  'TRANSACTION_NOT_FOUND'
 ] as const;
 
 export const TRANSACTION_TYPE = {
@@ -24,8 +25,18 @@ export const TRANSACTION_TYPE = {
 
 export const MEMBERSHIP_PLANS: Record<
   'basic' | 'pro',
-  { amount: number }
+  { amount: number, gst: number, totalAmount: number, planName: 'basic' | 'pro' }
 > = {
-  basic: { amount: 999 },
-  pro: { amount: 2499 },
+  basic: { amount: 999, gst: 179.82, totalAmount: 1178.82, planName: 'basic' },
+  pro: { amount: 2499, gst: 449.82, totalAmount: 2948.82, planName: 'pro' },
 };
+
+export const CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS = [
+  { interval: 3000, duration: 30000 },
+  { interval: 6000, duration: 60000 },
+  { interval: 10000, duration: 60000 },
+  { interval: 30000, duration: 60000 },
+  { interval: 60000, duration: 1500000 }, // 25 minutes timeout
+];
+
+export const CHECK_PAYMENT_STATUS_WAIT_TIME = 25000

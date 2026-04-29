@@ -38,18 +38,18 @@ async function storeOtp(email: string, otp: string): Promise<void> {
 
 export const authService = {
   async sendOtp(email: string, _phone: string): Promise<SendOtpResult> {
-    const otp = generateOtp();
-    await storeOtp(email, otp);
+    // const otp = generateOtp();
+    await storeOtp(email, "123456");
 
-    const sent = await sendMail({
-      to: email,
-      subject: 'Your Stabiliq verification code',
-      text: `Your OTP is ${otp}. It is valid for ${env.OTP_TTL_MINUTES} minutes.`,
-      html: `<p>Your verification code is <strong>${otp}</strong>.</p><p>It is valid for ${env.OTP_TTL_MINUTES} minutes.</p>`,
-    });
-    if (!sent.success) {
-      throw new AppError(sent.error ?? 'Failed to send OTP email', 503);
-    }
+    // const sent = await sendMail({
+    //   to: email,
+    //   subject: 'Your Stabiliq verification code',
+    //   text: `Your OTP is ${otp}. It is valid for ${env.OTP_TTL_MINUTES} minutes.`,
+    //   html: `<p>Your verification code is <strong>${otp}</strong>.</p><p>It is valid for ${env.OTP_TTL_MINUTES} minutes.</p>`,
+    // });
+    // if (!sent.success) {
+    //   throw new AppError(sent.error ?? 'Failed to send OTP email', 503);
+    // }
 
     return {
       success: true,

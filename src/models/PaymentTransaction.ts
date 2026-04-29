@@ -15,7 +15,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     isUiCallbackProcessed: { type: Boolean, default: false },
     paymentInstrument: mongoose.Schema.Types.Mixed,
     isDeleted: { type: Boolean, default: false },
-    isApplicationFeeProcessed: { type: Boolean, default: false },
+    isPaymentProcessed: { type: Boolean, default: false },
     gatewayOrderId: { type: String },
     plan: { type: String, enum: ['basic', 'pro'] },
   },
@@ -25,19 +25,19 @@ const paymentTransactionSchema = new mongoose.Schema(
 paymentTransactionSchema.index({ merchantTransactionId: 1 });
 
 export interface IPaymentTransactionDoc extends mongoose.Document {
-  merchantTransactionId?: string;
-  merchantId?: string;
-  totalAmount?: number;
-  userId?: mongoose.Types.ObjectId;
-  amount?: number;
+  merchantTransactionId: string;
+  merchantId: string;
+  totalAmount: number;
+  userId: mongoose.Types.ObjectId;
+  amount: number;
   phonepeTransactionId?: string;
   paymentStatus?: string;
-  type?: string;
+  type: string;
   refundId?: mongoose.Types.ObjectId;
   isUiCallbackProcessed?: boolean;
   paymentInstrument?: Record<string, unknown>;
-  isDeleted?: boolean;
-  isApplicationFeeProcessed?: boolean;
+  isDeleted: boolean;
+  isPaymentProcessed?: boolean;
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
   createdAt: Date;
