@@ -6,7 +6,7 @@ import type { JwtPayload } from '../types/auth';
 import { AppError } from '../middlewares/AppError';
 import { validateAndInitiatePaymentAtPhonePe } from './phonepePaymentService';
 import { calculateChecksum, convertJsonToBase64, delay, generateTransactionId, getPlan, timeStampToDateAndTimeWithSeconds } from '../utils';
-import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, PAYMENT_FAILED_STATUS } from '../utils/constants';
+import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, MEMBERSHIP_PLANS, PAYMENT_FAILED_STATUS } from '../utils/constants';
 import axios from 'axios';
 // const { sse } = require("../server");
 
@@ -162,7 +162,48 @@ export const paymentService = {
     const doc = await paymentTransactionRepository.updateById(id, update);
     return doc ? paymentTransactionRepository.toDto(doc) : null;
   },
-  
+   async getLastPaymentStatus(userId: string, activity: string){
+    const lead = await userRepository.findOne({_id: userId, isActive:true})
+    if(!lead){
+        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | lead not found`, {userId})
+        return { status: false, message:"Lead Not Found.", statusCode: 404}
+    }
+    const lastTransaction = await paymentTransactionRepository.find({userId: userId, paymentStatus: {$ne: PAYMENT_STATUS.paymentInitiated}, type: TRANSACTION_TYPE.payment},{}, {createdAt: -1}, 1)
+    if(!lastTransaction.length){
+        console.log(`${activity} | No transaction found`, {userId})
+        return {status: true, message: "No payment found", statusCode: 200, isErrorForUser: true, data: {isTransactionFound: false}}
+    }
+    const { paymentStatus} = lastTransaction[0]
+    let isActiveMember = lead?.plan ? true : false
+    const responseData: { isActiveMember: boolean; paymentStatus?: string; plan: string | undefined; totalAmount?: number } = {
+        isActiveMember,
+        plan: getPlan(lastTransaction[0].amount)
+    }
+    //payment is success
+    if(paymentStatus === PAYMENT_STATUS.paymentSuccess){
+        responseData['paymentStatus'] = paymentStatus
+    }
+    //payment is in pending state, will check again after 25 secs
+    if(paymentStatus === PAYMENT_STATUS.paymentPending){
+        responseData['paymentStatus'] = paymentStatus
+    }
+    //Payment is failed
+    if(PAYMENT_FAILED_STATUS.includes(paymentStatus as typeof PAYMENT_FAILED_STATUS[number]) ){
+        responseData['paymentStatus'] = PAYMENT_STATUS.failed
+        responseData['totalAmount'] = lastTransaction[0].amount
+    }
+    //payment is still in pending when status was checked after 25 secs, now marked as pending-failed
+    if(paymentStatus === PAYMENT_STATUS.pendingFailed ){
+        responseData['paymentStatus'] = PAYMENT_STATUS.pendingFailed
+        responseData['totalAmount'] = lastTransaction[0].amount
+    }
+    //Initiated refund as payment was successful after going to pending-failed status (after 25 secs in reconciliation process)
+    if(paymentStatus === PAYMENT_STATUS.refundInitiated ){
+        responseData['paymentStatus'] = PAYMENT_STATUS.pendingFailed
+        responseData['totalAmount'] = lastTransaction[0].amount
+    }
+    return { status: true, statusCode:200, data: responseData}
+}
 };
 
 

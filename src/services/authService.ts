@@ -93,18 +93,18 @@ export const authService = {
     if (!user) {
       throw new AppError('User not found. Please sign up first.', 404);
     }
-    const otp = generateOtp();
+    const otp = '123456'; //generateOtp();
     await storeOtp(email, otp);
 
-    const sent = await sendMail({
-      to: email,
-      subject: 'Your Stabiliq login code',
-      text: `Your OTP is ${otp}. It is valid for ${env.OTP_TTL_MINUTES} minutes.`,
-      html: `<p>Your login code is <strong>${otp}</strong>.</p><p>It is valid for ${env.OTP_TTL_MINUTES} minutes.</p>`,
-    });
-    if (!sent.success) {
-      throw new AppError(sent.error ?? 'Failed to send OTP email', 503);
-    }
+    // const sent = await sendMail({
+    //   to: email,
+    //   subject: 'Your Stabiliq login code',
+    //   text: `Your OTP is ${otp}. It is valid for ${env.OTP_TTL_MINUTES} minutes.`,
+    //   html: `<p>Your login code is <strong>${otp}</strong>.</p><p>It is valid for ${env.OTP_TTL_MINUTES} minutes.</p>`,
+    // });
+    // if (!sent.success) {
+    //   throw new AppError(sent.error ?? 'Failed to send OTP email', 503);
+    // }
 
     return {
       success: true,

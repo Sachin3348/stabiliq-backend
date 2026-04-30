@@ -15,6 +15,8 @@ router.post('/status', paymentController.handleUserPaymentCompletion)
 //called when payment reach a terminal state (failed, complete)
 router.post('/callback', phonepeS2SCallbackAuth, paymentController.processPaymentS2SCallback) 
 
+router.get("/payment-status", getCurrentUser, paymentController.getLastPaymentStatus)
+
 //called when refund transaction reach a terminal state
 // router.post('/refund', phonepeS2SCallbackAuth, paymentController.processRefundS2Scallback)
 

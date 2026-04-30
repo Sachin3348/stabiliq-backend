@@ -37,7 +37,7 @@ export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobil
         merchantTransactionId,
         amount: amountInPaisa,
         merchantUserId: userId,
-        redirectUrl: `${process.env.STABILIQ_FE_URL}/payment-status`,
+        redirectUrl: `${process.env.STABILIQ_BACKEND_URL}/api/payment/status`,
         redirectMode: "POST",
         callbackUrl: `${process.env.STABILIQ_BACKEND_URL}/api/payment/callback`,
         paymentInstrument: {

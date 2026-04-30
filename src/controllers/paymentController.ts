@@ -90,5 +90,26 @@ async processPaymentS2SCallback(req: Request, res: Response){
         // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
         return res.status(error.statusCode || 500).send({status: false, message: "INTERNAL_SEVER_ERROR"})
     }
+},
+    async getLastPaymentStatus(req: Request, res: Response){
+    const {id: userId} = req.user || {}
+    const activity =`Get Last Payment Status`
+    // let loggingData = {
+    //     activity: "getLastPaymentStatus",   
+    //     userId
+    // }
+    try {
+        // loggingService.logActivity(loggingData)
+        if(!userId){
+            console.log(`${activity} | userId is mandatory`, {userId})
+            return res.status(400).send({status: false, message: "lead details is mandatory"})
+        }
+        const {status, message, statusCode, data, isErrorForUser=false} = await paymentService.getLastPaymentStatus(String(userId), activity)
+        return res.status(statusCode || 200).send({status, ...(message && {message}), ...(data && {data}), isErrorForUser})
+    } catch (error: any) {
+        // loggingService.logError(error, loggingData)
+        console.log(`${activity} | Error while checking last user payment status of userId: ${userId} with message: ${error?.response?.data?.message || error?.message}`, JSON.stringify(error))
+        return res.status(error?.statusCode || 500).send({status: false, message: "Something went wrong, please try again later."})
+    }
 }
 };

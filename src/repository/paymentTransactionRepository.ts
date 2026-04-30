@@ -54,6 +54,14 @@ export const paymentTransactionRepository = {
     if (populate?.refundId) q = q.populate('refundId');
     return q.exec();
   },
+  async find(query: any, populate?: PopulateOptions, sort?: Record<string, 1 | -1>, limit?: number): Promise<Array<IPaymentTransactionDoc> | []> {
+    let q = PaymentTransaction.find(query);
+    if (populate?.userId) q = q.populate('userId');
+    if (populate?.refundId) q = q.populate('refundId');
+    if (sort) q = q.sort(sort);
+    if (limit) q = q.limit(limit);
+    return q.exec();
+  },
   async findOneAndUpdate(query: any, update: any, newOption: boolean = true): Promise<IPaymentTransactionDoc | null> {
     return PaymentTransaction.findOneAndUpdate(query, update, { new: newOption }).exec();
   },
