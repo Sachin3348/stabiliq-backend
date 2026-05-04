@@ -6,7 +6,7 @@ import type { JwtPayload } from '../types/auth';
 import { AppError } from '../middlewares/AppError';
 import { validateAndInitiatePaymentAtPhonePe } from './phonepePaymentService';
 import { calculateChecksum, convertJsonToBase64, delay, generateTransactionId, getPlan, timeStampToDateAndTimeWithSeconds } from '../utils';
-import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, MEMBERSHIP_PLANS, PAYMENT_FAILED_STATUS } from '../utils/constants';
+import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, PAYMENT_FAILED_STATUS } from '../utils/constants';
 import axios from 'axios';
 // const { sse } = require("../server");
 
@@ -333,7 +333,7 @@ const transactionDetails = await paymentTransactionRepository.findOneAndUpdate({
           plan: getPlan(amount/100),
       }
   }
-  const a = await userRepository.findOneAndUpdate({_id: userId, isActive : true}, updateDetails)
+  await userRepository.findOneAndUpdate({_id: userId, isActive : true}, updateDetails)
 
   console.log(`${activity} | End | Processing application fee payment for userId: ${userId}, merchantTransactionId: ${merchantTransactionId}`)
 

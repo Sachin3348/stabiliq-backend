@@ -13,7 +13,7 @@ export const profileController = {
         sendError(res, 401, 'Not authenticated');
         return;
       }
-      const result = profileService.getUploadResult(req.user.id, req.file.originalname);
+      const result = profileService.getUploadResult(req.user.id.toString(), req.file.originalname);
       sendSuccess(res, 200, result);
     } catch (err) {
       next(err);

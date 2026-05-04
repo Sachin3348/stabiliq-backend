@@ -4,7 +4,7 @@ import { createAccessToken } from '../middlewares/auth';
 import type { UserDto } from '../types/user';
 import type { JwtPayload } from '../types/auth';
 import { AppError } from '../middlewares/AppError';
-import { sendMail } from '../commonservice/emailService';
+// import { sendMail } from '../commonservice/emailService';
 import { env } from '../config/env';
 
 export interface SendOtpResult {
@@ -27,9 +27,9 @@ export interface MeResult {
   user: UserDto;
 }
 
-function generateOtp(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
-}
+// function generateOtp(): string {
+//   return String(Math.floor(100000 + Math.random() * 900000));
+// }
 
 async function storeOtp(email: string, otp: string): Promise<void> {
   const expiresAt = new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000);

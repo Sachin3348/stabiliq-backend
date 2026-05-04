@@ -83,7 +83,7 @@ export const financialAssistanceService = {
       );
     }
     const now = new Date();
-    const requestId = `FA-${payload.id.substring(0, 8)}-${now
+    const requestId = `FA-${payload.id.toString().substring(0, 8)}-${now
       .toISOString()
       .replace(/[-:T.]/g, '')
       .substring(0, 14)}`;
