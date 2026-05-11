@@ -64,7 +64,7 @@ export const paymentService = {
   },
 
   async handleUserPaymentCompletion(transactionId: string, activity: string){
-    const transaction = await paymentTransactionRepository.findOne({merchantTransactionId: transactionId}, {userId: true })
+    const transaction = await paymentTransactionRepository.findOne({merchantTransactionId: transactionId})
     if(!transaction){
         console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | merchantTransactionId: ${transaction} doesn't exist`)
         return {status: false, code: 404, message: "Transaction doesn't exist."}
