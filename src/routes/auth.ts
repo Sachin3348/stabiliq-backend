@@ -12,8 +12,8 @@ router.use(requestTimeout(25000));
 
 router.post(
   '/send-otp',
-  [body('email').isEmail().normalizeEmail(), body('phone').notEmpty().trim()],
-  validate([body('email'), body('phone')], 'Email and phone are required'),
+  [body('email').isEmail().normalizeEmail(), body('phone').optional().trim()],
+  validate([body('email')], 'Email is required'),
   (req: Request, res: Response, next: NextFunction) => authController.sendOtp(req, res, next)
 );
 

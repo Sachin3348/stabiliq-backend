@@ -2,8 +2,10 @@ import { Router, Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import { body } from 'express-validator';
 import { profileController } from '../controllers/profileController';
+import { profileSubmissionController } from '../controllers/profileSubmissionController';
 import { getCurrentUser } from '../middlewares/auth';
 import { validate } from '../middlewares/validate';
+import { resumeUpload } from '../middlewares/resumeUpload';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -28,6 +30,8 @@ const upload = multer({
 
 const router = Router();
 
+// ─── existing routes ──────────────────────────────────────────────────────────
+
 router.post(
   '/upload-resume',
   getCurrentUser,
@@ -43,6 +47,26 @@ router.post(
   validate([body('resumeUrl'), body('linkedinUrl')], 'Invalid input'),
   (req: Request, res: Response, next: NextFunction) =>
     profileController.analyze(req, res, next)
+);
+
+// ─── submission routes ────────────────────────────────────────────────────────
+
+router.get('/submission', getCurrentUser, (req: Request, res: Response) =>
+  profileSubmissionController.getSubmission(req, res)
+);
+
+router.post(
+  '/submit',
+  getCurrentUser,
+  resumeUpload.single('resume'),
+  (req: Request, res: Response) => profileSubmissionController.submit(req, res)
+);
+
+router.put(
+  '/submission',
+  getCurrentUser,
+  resumeUpload.single('resume'),
+  (req: Request, res: Response) => profileSubmissionController.updateSubmission(req, res)
 );
 
 export default router;
