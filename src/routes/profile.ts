@@ -35,9 +35,17 @@ const router = Router();
 router.post(
   '/upload-resume',
   getCurrentUser,
-  upload.single('file'),
+  upload.single('resume'),
   (req: Request, res: Response, next: NextFunction) =>
     profileController.uploadResume(req, res, next)
+);
+
+// GET /api/profile/resume/:id/parsed-data
+router.get(
+  '/resume/:id/parsed-data',
+  getCurrentUser,
+  (req: Request, res: Response, next: NextFunction) =>
+    profileController.getParsedData(req, res, next)
 );
 
 router.post(
@@ -67,6 +75,23 @@ router.put(
   getCurrentUser,
   resumeUpload.single('resume'),
   (req: Request, res: Response) => profileSubmissionController.updateSubmission(req, res)
+);
+
+// POST /api/profile/optimize-experience
+router.post(
+  '/optimize-experience',
+  getCurrentUser,
+  [
+    body('role').isString().notEmpty(),
+    body('company').isString().notEmpty(),
+    body('bullets').isArray({ min: 1, max: 20 }),
+  ],
+  validate(
+    [body('role'), body('company'), body('bullets')],
+    'role, company, and bullets are required'
+  ),
+  (req: Request, res: Response, next: NextFunction) =>
+    profileController.optimizeExperience(req, res, next)
 );
 
 export default router;

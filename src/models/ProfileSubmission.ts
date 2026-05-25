@@ -1,5 +1,27 @@
 import mongoose from 'mongoose';
 
+const parsedBulletSchema = new mongoose.Schema(
+  { id: String, text: String },
+  { _id: false }
+);
+
+const parsedExperienceSchema = new mongoose.Schema(
+  {
+    company: String,
+    role: String,
+    bullets: [parsedBulletSchema],
+  },
+  { _id: false }
+);
+
+const parsedProjectSchema = new mongoose.Schema(
+  {
+    name: String,
+    bullets: [parsedBulletSchema],
+  },
+  { _id: false }
+);
+
 const profileSubmissionSchema = new mongoose.Schema(
   {
     userId: {
@@ -48,12 +70,38 @@ const profileSubmissionSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    /** Structured bullet points extracted from the uploaded PDF */
+    parsedResume: {
+      experience: [parsedExperienceSchema],
+      projects: [parsedProjectSchema],
+    },
   },
   {
     timestamps: true, // createdAt, updatedAt
     collection: 'profile-submissions',
   }
 );
+
+export interface ParsedBullet {
+  id: string;
+  text: string;
+}
+
+export interface ParsedExperience {
+  company: string;
+  role: string;
+  bullets: ParsedBullet[];
+}
+
+export interface ParsedProject {
+  name: string;
+  bullets: ParsedBullet[];
+}
+
+export interface ParsedResume {
+  experience: ParsedExperience[];
+  projects: ParsedProject[];
+}
 
 export interface IProfileSubmissionDoc extends mongoose.Document {
   userId: mongoose.Types.ObjectId;
@@ -67,6 +115,7 @@ export interface IProfileSubmissionDoc extends mongoose.Document {
   suggestions?: string | null;
   adminNote?: string | null;
   evaluatedAt?: Date | null;
+  parsedResume?: ParsedResume;
   createdAt: Date;
   updatedAt: Date;
 }

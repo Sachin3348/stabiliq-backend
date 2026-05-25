@@ -6,6 +6,19 @@ export const profileSubmissionRepository = {
     return ProfileSubmission.findOne({ userId: new mongoose.Types.ObjectId(userId) }).exec();
   },
 
+  /** Creates a minimal submission with only resume data — skips required field validation.
+   *  jobDescription can be filled later via the /submit flow. */
+  async createResumeOnly(
+    userId: string,
+    data: { resumeUrl: string; resumeKey?: string; parsedResume?: any }
+  ): Promise<IProfileSubmissionDoc> {
+    return ProfileSubmission.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(userId) },
+      { $set: { userId: new mongoose.Types.ObjectId(userId), ...data } },
+      { new: true, upsert: true, runValidators: false }
+    ).exec() as Promise<IProfileSubmissionDoc>;
+  },
+
   async findById(id: string): Promise<IProfileSubmissionDoc | null> {
     return ProfileSubmission.findById(id).exec();
   },
