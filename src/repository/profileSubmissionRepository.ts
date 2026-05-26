@@ -63,4 +63,36 @@ export const profileSubmissionRepository = {
   ): Promise<IProfileSubmissionDoc | null> {
     return ProfileSubmission.findByIdAndUpdate(id, { $set: data }, { new: true }).exec();
   },
+
+  /** Upsert LinkedIn review result — creates a minimal doc if none exists yet */
+  async saveLinkedInReview(
+    userId: string,
+    review: Record<string, unknown>
+  ): Promise<IProfileSubmissionDoc> {
+    return ProfileSubmission.findOneAndUpdate(
+      { userId: new mongoose.Types.ObjectId(userId) },
+      {
+        $set: {
+          linkedInReview: review,
+          linkedInReviewedAt: new Date(),
+        },
+      },
+      { new: true, upsert: true, runValidators: false }
+    ).exec() as Promise<IProfileSubmissionDoc>;
+  },
+
+  /** Return only the cached LinkedIn review for a user (lightweight query) */
+  async getLinkedInReview(
+    userId: string
+  ): Promise<{ linkedInReview: Record<string, unknown> | null; linkedInReviewedAt: Date | null } | null> {
+    const doc = await ProfileSubmission.findOne(
+      { userId: new mongoose.Types.ObjectId(userId) },
+      { linkedInReview: 1, linkedInReviewedAt: 1, _id: 0 }
+    ).exec();
+    if (!doc) return null;
+    return {
+      linkedInReview: (doc.linkedInReview as Record<string, unknown>) ?? null,
+      linkedInReviewedAt: doc.linkedInReviewedAt ?? null,
+    };
+  },
 };

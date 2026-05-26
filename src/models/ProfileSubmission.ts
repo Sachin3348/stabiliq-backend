@@ -75,6 +75,15 @@ const profileSubmissionSchema = new mongoose.Schema(
       experience: [parsedExperienceSchema],
       projects: [parsedProjectSchema],
     },
+    /** LinkedIn profile AI review result — cached per user */
+    linkedInReview: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
+    },
+    linkedInReviewedAt: {
+      type: Date,
+      default: null,
+    },
   },
   {
     timestamps: true, // createdAt, updatedAt
@@ -116,6 +125,8 @@ export interface IProfileSubmissionDoc extends mongoose.Document {
   adminNote?: string | null;
   evaluatedAt?: Date | null;
   parsedResume?: ParsedResume;
+  linkedInReview?: Record<string, unknown> | null;
+  linkedInReviewedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }

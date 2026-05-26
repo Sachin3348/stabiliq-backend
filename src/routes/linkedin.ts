@@ -22,7 +22,15 @@ const upload = multer({
 
 const router = Router();
 
-// POST /api/linkedin/review
+// GET /api/linkedin/review  — return cached result (no upload needed)
+router.get(
+  '/review',
+  getCurrentUser,
+  (req: Request, res: Response, next: NextFunction) =>
+    linkedinController.getCachedReview(req, res, next)
+);
+
+// POST /api/linkedin/review — upload PDF, run AI, save & return result
 router.post(
   '/review',
   getCurrentUser,
