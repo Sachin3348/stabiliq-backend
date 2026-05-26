@@ -13,6 +13,7 @@ import profileRoutes from './routes/profile';
 import financialAssistanceRoutes from './routes/financial_assistance';
 import paymentRoutes from './routes/payment';
 import adminRoutes from './routes/admin';
+import linkedinRoutes from './routes/linkedin';
 const SSE = require("express-sse");
 
 const app = express();
@@ -39,6 +40,7 @@ app.use('/api/profile', profileRoutes);
 app.use('/api/financial-assistance', financialAssistanceRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/linkedin', linkedinRoutes);
 
 app.use(errorHandler);
 
