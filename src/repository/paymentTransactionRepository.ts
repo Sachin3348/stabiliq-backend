@@ -40,6 +40,7 @@ export interface CreatePaymentTransactionInput {
   isPaymentProcessed?: boolean;
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
+  gateway?: 'phonepe' | 'cashfree';
 }
 
 export interface PopulateOptions {

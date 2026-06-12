@@ -59,9 +59,9 @@ export const authService = {
 
   async  verifyOtp(
     email: string,
-    phone: string,
+    phone: string | undefined,
     otp: string,
-    name: string,
+    name: string | undefined,
   ): Promise<VerifyOtpResult> {
     const valid = await userOtpVerificationRepository.validateAndConsume(email, otp);
     if (!valid) {
@@ -78,8 +78,8 @@ export const authService = {
 
     user = await userRepository.create({
       email,
-      name,
-      phone,
+      name: name ?? '',
+      phone: phone ?? '',
       enrollmentDate,
       isActive: true,
     });

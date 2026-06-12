@@ -46,6 +46,7 @@ export interface PaymentTransactionDto {
   isPaymentProcessed?: boolean;
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
+  gateway?: 'phonepe' | 'cashfree';
   createdAt?: string;
   updatedAt?: string;
 }

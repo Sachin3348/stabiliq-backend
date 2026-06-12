@@ -5,11 +5,13 @@ import { PAYMENT_STATUS, TRANSACTION_TYPE, type PaymentTransactionDto, type Vali
 import type { JwtPayload } from '../types/auth';
 import { AppError } from '../middlewares/AppError';
 import { validateAndInitiatePaymentAtPhonePe } from './phonepePaymentService';
+import { validateAndInitiatePaymentAtCashfree, checkCashfreePaymentStatus, initiateCashfreeRefund } from './cashfreePaymentService';
 import { calculateChecksum, convertJsonToBase64, delay, generateTransactionId, getPlan, timeStampToDateAndTimeWithSeconds } from '../utils';
 import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, PAYMENT_FAILED_STATUS } from '../utils/constants';
 import axios from 'axios';
 // const { sse } = require("../server");
 
+const gateway = process.env.SELECTED_PG || "cashfree"
 export interface CreateTransactionInput {
   merchantTransactionId?: string;
   merchantId?: string;
@@ -23,6 +25,7 @@ export interface CreateTransactionInput {
   plan?: 'basic' | 'pro';
   paymentInstrument?: Record<string, unknown>;
   mobile: string;
+  gateway?: 'phonepe' | 'cashfree';
 }
 async function isTransactionIdUnique(merchantTransactionId: string): Promise<boolean> {
     const existingTransaction = await paymentTransactionRepository.findOne({ merchantTransactionId });
@@ -52,7 +55,10 @@ export const paymentService = {
     if(userDetails.plan){
         return {status: false, message: "User already has an active plan"}
     }
-    const result = await validateAndInitiatePaymentAtPhonePe({amount: data.amount, userId: data.userId, mobile: data.mobile});
+    // const gateway = data.gateway || 'cashfree';
+    const result = gateway === 'cashfree'
+      ? await validateAndInitiatePaymentAtCashfree({ amount: data.amount, userId: data.userId, mobile: data.mobile })
+      : await validateAndInitiatePaymentAtPhonePe({ amount: data.amount, userId: data.userId, mobile: data.mobile });
     if(!result.status){
       throw new AppError(result.message || 'Error while initiating payment request', 400);
     }
@@ -75,23 +81,19 @@ export const paymentService = {
     }
     await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId},{$set: {isUiCallbackProcessed: true}})
 
-    let merchantId = process.env.PST_PHONEPE_MERCHANT_ID || ''
-    let saltKey = process.env.PST_PHONEPE_SALT_KEY || ''
-    let saltKeyIndex = process.env.PST_SALT_KEY_INDEX || ''
-
-    const {code, data, status, statusCode, message} = await checkPhonepePaymentStatus(transactionId, transaction.amount, String(transaction?.userId), merchantId, saltKey, saltKeyIndex)
+    const {code, data, status, statusCode, message} = await checkGatewayPaymentStatus(transactionId, transaction.amount, String(transaction?.userId))
     if(!status){
         console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while processing payment completion for merchantTransactionId: ${transactionId} and userId: ${transaction?.userId}`, {code, data: JSON.stringify(data), statusCode, status})
         return {statusCode, status}
     }
     if(code === PAYMENT_STATUS.paymentSuccess){
-        await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: PAYMENT_STATUS.paymentSuccess, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
-        const {status, data: responseData, message} = await processPayment(String(transaction.userId), transactionId, merchantId, saltKey, saltKeyIndex, transaction.amount)
+        await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: PAYMENT_STATUS.paymentSuccess, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
+        const {status, data: responseData, message} = await processPayment(String(transaction.userId), transactionId, transaction.amount)
         return {status, data: responseData, message}
     }
     if(code === PAYMENT_STATUS.paymentPending){
-        await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{ paymentStatus: code, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
-        checkAndUpdateAfter25Seconds(transactionId, transaction.amount, String(transaction.userId), merchantId, saltKey, saltKeyIndex)
+        await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{ paymentStatus: code, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
+        checkAndUpdateAfter25Seconds(transactionId, transaction.amount, String(transaction.userId))
         return {status: true, code: 200}
     }
     if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
@@ -126,7 +128,7 @@ export const paymentService = {
             ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})
         }
         if(code === PAYMENT_STATUS.paymentSuccess){
-            await processPayment(String(transaction.userId), merchantTransactionId, merchantId, saltKey!, saltKeyIndex!, transaction.amount)
+            await processPayment(String(transaction.userId), merchantTransactionId, transaction.amount)
             updateData.paymentStatus = code
         }
         if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
@@ -208,6 +210,34 @@ export const paymentService = {
 
 
 
+async function checkGatewayPaymentStatus(merchantTransactionId: string, amount: number, userId: string): Promise<{status: boolean, code: string, data?: any, statusCode?: number, message?: string}> {
+    const transaction = await paymentTransactionRepository.findOne({ merchantTransactionId });
+    if (!transaction) {
+        return { status: false, code: 'TRANSACTION_NOT_FOUND', statusCode: 404, message: 'Transaction Not found' };
+    }
+    if (transaction.gateway === 'cashfree') {
+        return checkCashfreePaymentStatus(merchantTransactionId, amount, userId);
+    }
+    const merchantId = process.env.PST_PHONEPE_MERCHANT_ID || '';
+    const saltKey = process.env.PST_PHONEPE_SALT_KEY || '';
+    const saltKeyIndex = process.env.PST_SALT_KEY_INDEX || '';
+    return checkPhonepePaymentStatus(merchantTransactionId, amount, userId, merchantId, saltKey, saltKeyIndex);
+}
+
+async function initiateGatewayRefund(transactionId: string): Promise<{status: boolean, statusCode?: number, message: string, data?: any}> {
+    const transaction = await paymentTransactionRepository.findOne({ merchantTransactionId: transactionId, type: TRANSACTION_TYPE.payment });
+    if (!transaction) {
+        return { status: false, statusCode: 404, message: 'Transaction not found' };
+    }
+    if (transaction.gateway === 'cashfree') {
+        return initiateCashfreeRefund(transactionId);
+    }
+    const merchantId = process.env.PST_PHONEPE_MERCHANT_ID || '';
+    const saltKey = process.env.PST_PHONEPE_SALT_KEY || '';
+    const saltKeyIndex = process.env.PST_SALT_KEY_INDEX || '';
+    return initiateRefund(transactionId, merchantId, saltKey, saltKeyIndex);
+}
+
 //PhonePe Check Status API: https://developer.phonepe.com/v1/reference/check-status-api-1
 async function checkPhonepePaymentStatus(merchantTransactionId: string, amount: number, userId: string, merchantId: string, saltKey: string, saltKeyIndex: string, category: string = "membership_fee"): Promise<{status: boolean, code: string, data?: any, statusCode?: number, message?: string}>{
   const activity = "Check Payment Status"
@@ -256,54 +286,47 @@ async function checkPhonepePaymentStatus(merchantTransactionId: string, amount: 
 }
 
 
-async function checkAndUpdateAfter25Seconds(transactionId: string, amount: number, userId: string, merchantId: string, saltKey: string, saltKeyIndex: string, category: string = "membership_fee"){
+async function checkAndUpdateAfter25Seconds(transactionId: string, amount: number, userId: string){
   const activity = "Checking Payement Status After 25 Seccond"
   try {
       await delay(CHECK_PAYMENT_STATUS_WAIT_TIME)
-      const {code, data, status, statusCode, message} = await checkPhonepePaymentStatus(transactionId, amount, userId, category, merchantId, saltKey, saltKeyIndex)
+      const {code, data, status, statusCode, message} = await checkGatewayPaymentStatus(transactionId, amount, userId)
       if(!status){
-          console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while processing payment completion for merchantTransactionId: ${transactionId}, amount: ${amount}, category: ${category} and userId: ${userId}`, {code, data: JSON.stringify(data), statusCode, status})
+          console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while processing payment completion for merchantTransactionId: ${transactionId}, amount: ${amount} and userId: ${userId}`, {code, data: JSON.stringify(data), statusCode, status})
           return {statusCode, status}
       }
       if(code === PAYMENT_STATUS.paymentSuccess){
-          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set: { paymentStatus: PAYMENT_STATUS.paymentSuccess, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
-          const {status, data: responseData, message} = await processPayment(userId, transactionId, merchantId, saltKey, saltKeyIndex,amount)
-        //   sse.send({userId: userId?._id}, "check_status")
+          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set: { paymentStatus: PAYMENT_STATUS.paymentSuccess, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
+          const {status, data: responseData, message} = await processPayment(userId, transactionId, amount)
           return {status, data: responseData, message}
       }
       if(code === PAYMENT_STATUS.paymentPending){
-          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{ paymentStatus: PAYMENT_STATUS.pendingFailed, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
-          // sse.send({userId: userId?._id}, "check_status")
-          pendingPaymentReconciliationProcess(transactionId, amount, userId, category, merchantId, saltKey, saltKeyIndex)
+          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{ paymentStatus: PAYMENT_STATUS.pendingFailed, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
+          pendingPaymentReconciliationProcess(transactionId, amount, userId)
           return {status: true, code: 200}
       }
-      if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){ 
-          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set: { paymentStatus: code,  ...(data?.data?.paymentInstrument && {paymentInstrument: data?.data?.paymentInstrument})}})
-          // sse.send({userId: userId?._id}, "check_status")
+      if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
+          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set: { paymentStatus: code, ...(data?.paymentInstrument && {paymentInstrument: data?.paymentInstrument})}})
           return {status: true, message: "Your payment has failed. Please try again", code: 200}
       }
 
-      console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking payment status for merchantTransactionId: ${transactionId}, amount: ${amount}, category: ${category} and userId: ${userId} with message: got unexpected code: ${code} in check status api`, JSON.stringify({code, data, status, statusCode, message, transactionId, userId, amount}))
-      // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), (message || "got unexpected code in check status api"), (code), `FST Payment UI Callback request with merchantTransactionId: ${transactionId}, amount: ${amount}, category: ${category} and userId:${userId}`]
-      // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
+      console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking payment status for merchantTransactionId: ${transactionId}, amount: ${amount} and userId: ${userId} with message: got unexpected code: ${code} in check status api`, JSON.stringify({code, data, status, statusCode, message, transactionId, userId, amount}))
       return {status: false}
   } catch (error: any) {
       console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while handling user payment completion with message: ${error?.response?.data?.message || error?.message}`, JSON.stringify(error), {transactionId, amount, userId})
-      // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), (error?.response?.data?.message || error?.message), (error?.response?.status || 500), `FST Payment UI Callback request with merchantTransactionId: ${transactionId}, userId: ${userId}, category: ${category} and amount is ${amount}`]
-      // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
       return {status: false, code: error?.response?.status || 500, message: error?.response?.data?.message || error?.message }
   }
 }
 
 //updates leads payment status and related field in db and zoho on payment success
-async function processPayment(userId: string, merchantTransactionId: string, merchantId: string, saltKey: string, saltKeyIndex: string,amount: number){
+async function processPayment(userId: string, merchantTransactionId: string, amount: number){
   const activity = "Processing FST Lead application fee payment"
   console.log(`${activity} | Start | Processing application fee payment for userId: ${userId}, merchantTransactionId: ${merchantTransactionId}`)
 
-const transactionDetails = await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId, merchantId, type: TRANSACTION_TYPE.payment}, {isPaymentProcessed: true}, false)
+  const transactionDetails = await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId, type: TRANSACTION_TYPE.payment}, {isPaymentProcessed: true}, false)
 
   if(!transactionDetails){
-      console.log(`${activity} | Transaction not found for merchantTransactionId ${merchantTransactionId}`, {userId, merchantTransactionId, merchantId, saltKey, saltKeyIndex,amount})
+      console.log(`${activity} | Transaction not found for merchantTransactionId ${merchantTransactionId}`, {userId, merchantTransactionId, amount})
       return {status: true, message: `Transaction not found for merchantTransactionId ${merchantTransactionId}`}
   }
 
@@ -321,11 +344,9 @@ const transactionDetails = await paymentTransactionRepository.findOneAndUpdate({
   if(lead.plan){
       console.log(`${activity} | Lead has already paid application fee. Initiating refund for merchantTransactionId: ${merchantTransactionId}`,
        {merchantTransactionId, leadName: lead.name, mobile:lead.phone})
-      const {status, message, data: refundResponseData} = await initiateRefund(merchantTransactionId, merchantId, saltKey, saltKeyIndex)
+      const {status, message, data: refundResponseData} = await initiateGatewayRefund(merchantTransactionId)
       console.log(`${activity} | Initiated refund for merchantTransactionId: ${merchantTransactionId}`, {status, message, refundResponseData, userId})
       await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId}, {$set:{paymentStatus: PAYMENT_STATUS.refundInitiated, refundId: refundResponseData?._id}})
-      // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), `userId: ${userId}, mobile: ${lead.phone} has already paid application fee. Initiating refund for merchantTransactionId: ${merchantTransactionId}.`, 400, `processing lead aplication fee`]
-      // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
       return {status:false, message: `Your application fee is already paid. We have initiated refund for this payment.`, isErrorForUser: true}
   }
   const updateDetails = {
@@ -337,7 +358,6 @@ const transactionDetails = await paymentTransactionRepository.findOneAndUpdate({
 
   console.log(`${activity} | End | Processing application fee payment for userId: ${userId}, merchantTransactionId: ${merchantTransactionId}`)
 
-  
   return {status: true, message: "lead application fee payment processed successfully.", data: {}}
 }
 
@@ -345,42 +365,36 @@ const transactionDetails = await paymentTransactionRepository.findOneAndUpdate({
 //This function is called from checkAndUpdateAfter25Seconds if payment status is still pending after 25 seconds.
 //It runs asynchronously and check payment status in specified intervals till payment status reach to a terminal state (success/failed)
 //updates the transaction and initiates refund in case of payment is success
-async function pendingPaymentReconciliationProcess(transactionId: string, amount: number, userId: string, category: string, merchantId: string, saltKey: string, saltKeyIndex: string){
+async function pendingPaymentReconciliationProcess(transactionId: string, amount: number, userId: string){
     const activity = "Checking Pending Payment Status in Reconciliation"
     try {
         for(let i = 0; i< CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS.length; i++){
             let {interval, duration} = CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS[i]
             while(duration > 0){
                 await delay(interval)
-                const {code, data, status, statusCode} = await checkPhonepePaymentStatus(transactionId, amount, userId, category, merchantId, saltKey, saltKeyIndex)
+                const {code, data, status, statusCode} = await checkGatewayPaymentStatus(transactionId, amount, userId)
                 if(!status){
-                    console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking status of pending payment in reconciliation process with merchantTransactionId: ${transactionId}, amount: ${amount}, category: ${category} and userId: ${userId}`, {code, data: JSON.stringify(data), statusCode, status})
-                    // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), message, (statusCode || 400), `reconciliation process to check status of FST phonepe merchantTransactionId: ${transactionId}, userId: ${userId}, category: ${category} and amount is ${amount}`]
-                    // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
+                    console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking status of pending payment in reconciliation process with merchantTransactionId: ${transactionId}, amount: ${amount} and userId: ${userId}`, {code, data: JSON.stringify(data), statusCode, status})
                     return {statusCode, status}
                 }
                 if(code === PAYMENT_STATUS.paymentSuccess){
-                    //initiating refund on transaction is success
-                    console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Initiating refund for a pending-failed merchantTransactionId: ${transactionId}, userId: ${userId}, category: ${category} and amount: ${amount}`)
-                    const {status, message, data: refundResponseData} = await initiateRefund(transactionId, merchantId, saltKey, saltKeyIndex)
-                    console.log(`${activity} | Initiated refund for merchantTransactionId: ${transactionId}`, {status, message, refundResponseData, userId, category})
-
-                    await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: PAYMENT_STATUS.refundInitiated, refundId: refundResponseData?._id, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
+                    console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Initiating refund for a pending-failed merchantTransactionId: ${transactionId}, userId: ${userId} and amount: ${amount}`)
+                    const {status, message, data: refundResponseData} = await initiateGatewayRefund(transactionId)
+                    console.log(`${activity} | Initiated refund for merchantTransactionId: ${transactionId}`, {status, message, refundResponseData, userId})
+                    await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: PAYMENT_STATUS.refundInitiated, refundId: refundResponseData?._id, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
                     return {status, data:refundResponseData, message}
                 }
                 if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
-                    await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: code, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
+                    await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: code, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
                     return {status: false, message: "Your payment has failed. Please try again", code: 200}
                 }
                 duration = duration - interval
             }
-        }  
-        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking status of pending payment in reconciliation process. merchantTransactionId: ${transactionId}, amount: ${amount}, category: ${category} and userId: ${userId}} doesn't reached to any terminal state in reconciliation process of 20 min `)
-        // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), `pending payment with merchantTransactionId: ${transactionId}, amount: ${amount}, category: ${category} and userId: ${userId}} doesn't reached to any terminal state in reconciliation process of 20 min`, 400, `reconciliation process to check FST pending payment status of merchantTransactionId: ${transactionId}, userId: ${userId} and amount is ${amount}`]
-        // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
+        }
+        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking status of pending payment in reconciliation process. merchantTransactionId: ${transactionId}, amount: ${amount} and userId: ${userId}} doesn't reached to any terminal state in reconciliation process of 20 min `)
         return
     } catch (error: any) {
-        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking status of pending payment in reconciliation process with message: ${error?.response?.data?.message || error?.message}`, JSON.stringify(error), {transactionId, amount, userId, category})
+        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while checking status of pending payment in reconciliation process with message: ${error?.response?.data?.message || error?.message}`, JSON.stringify(error), {transactionId, amount, userId})
         // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), (error?.response?.data?.message || error?.message), (error?.response?.status || 500), `reconciliation process to check FST pending payment status of merchantTransactionId: ${transactionId}, userId: ${userId}, category: ${category} and amount is ${amount}`]
         // sendErrorNotification({mobiles: JSON.parse(process.env.PHONEPE_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
         return { status: false, code: error?.response?.status || 500, message: error?.response?.data?.message || error?.message }

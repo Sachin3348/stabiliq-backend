@@ -21,11 +21,11 @@ router.post(
   '/verify-otp',
   [
     body('email').isEmail().normalizeEmail(),
-    body('phone').notEmpty().trim(),
+    body('phone').optional().trim(),
     body('otp').notEmpty(),
-    body('name').notEmpty().trim(),
+    body('name').optional().trim(),
   ],
-  validate([body('email'), body('phone'), body('otp'), body('name')], 'All fields are required'),
+  validate([body('email'), body('otp')], 'email and otp are required'),
   (req: Request, res: Response, next: NextFunction) => authController.verifyOtp(req, res, next)
 );
 

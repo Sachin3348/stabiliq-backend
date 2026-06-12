@@ -17,9 +17,9 @@ export const authController = {
     try {
       const { email, phone, otp, name } = req.body as {
         email: string;
-        phone: string;
+        phone?: string;
         otp: string;
-        name: string;
+        name?: string;
         // plan?: string;
       };
       const result = await authService.verifyOtp(email, phone, otp, name);

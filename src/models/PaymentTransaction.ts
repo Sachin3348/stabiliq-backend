@@ -18,6 +18,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     isPaymentProcessed: { type: Boolean, default: false },
     gatewayOrderId: { type: String },
     plan: { type: String, enum: ['basic', 'pro'] },
+    gateway: { type: String, enum: ['phonepe', 'cashfree'], default: 'phonepe' },
   },
   { timestamps: true }
 );
@@ -40,6 +41,7 @@ export interface IPaymentTransactionDoc extends mongoose.Document {
   isPaymentProcessed?: boolean;
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
+  gateway?: 'phonepe' | 'cashfree';
   createdAt: Date;
   updatedAt: Date;
 }
