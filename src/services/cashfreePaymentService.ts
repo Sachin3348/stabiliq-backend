@@ -128,7 +128,7 @@ export async function initiateCashfreeRefund(transactionId: string): Promise<{ s
         };
 
         const response = await axios.post(`${hostUrl}/orders/${transactionId}/refunds`, payload, { headers: cashfreeHeaders() });
-        const { cf_refund_id, refund_status } = response.data || {};
+        const {  refund_status } = response.data || {}; //cf_refund_id,
 
         console.log(`Cashfree refund initiated | orderId: ${transactionId}, refundId: ${refundId}`, JSON.stringify(response.data));
 
