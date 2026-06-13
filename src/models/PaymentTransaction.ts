@@ -19,6 +19,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     gatewayOrderId: { type: String },
     plan: { type: String, enum: ['basic', 'pro'] },
     gateway: { type: String, enum: ['phonepe', 'cashfree'], default: 'phonepe' },
+    redemptionId: { type: mongoose.Schema.Types.ObjectId, ref: 'CouponRedemption' },
   },
   { timestamps: true }
 );
@@ -42,6 +43,7 @@ export interface IPaymentTransactionDoc extends mongoose.Document {
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
   gateway?: 'phonepe' | 'cashfree';
+  redemptionId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

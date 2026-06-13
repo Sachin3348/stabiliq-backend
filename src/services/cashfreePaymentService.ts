@@ -37,7 +37,7 @@ function cashfreeHeaders() {
     };
 }
 
-export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mobile, plan }: { amount: number; userId: string; mobile: string; plan?: 'basic' | 'pro' }): Promise<{ status: boolean; paymentSessionId?:string; checkoutPageUrl?: string; message?: string; }> {
+export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mobile, plan, redemptionId }: { amount: number; userId: string; mobile: string; plan?: 'basic' | 'pro'; redemptionId?: import('mongoose').Types.ObjectId }): Promise<{ status: boolean; paymentSessionId?:string; checkoutPageUrl?: string; message?: string; }> {
     const orderId = await generateUniqueTransactionId();
     const hostUrl = process.env.CASHFREE_PG_HOST_URL || 'https://sandbox.cashfree.com/pg';
 
@@ -79,6 +79,7 @@ export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mob
         type: TRANSACTION_TYPE.payment,
         gateway: 'cashfree',
         ...(plan && { plan }),
+        ...(redemptionId && { redemptionId }),
     });
 
     console.log('Cashfree payment initiated', { mobile, userId, amount, orderId, payment_session_id });

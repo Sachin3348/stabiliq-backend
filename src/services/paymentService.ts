@@ -7,6 +7,7 @@ import { AppError } from '../middlewares/AppError';
 import { validateAndInitiatePaymentAtPhonePe } from './phonepePaymentService';
 import { validateAndInitiatePaymentAtCashfree, checkCashfreePaymentStatus, initiateCashfreeRefund } from './cashfreePaymentService';
 import { calculateChecksum, convertJsonToBase64, delay, generateTransactionId, getPlan, timeStampToDateAndTimeWithSeconds } from '../utils';
+import { couponService } from './couponService';
 import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, PAYMENT_FAILED_STATUS } from '../utils/constants';
 import axios from 'axios';
 // const { sse } = require("../server");
@@ -26,6 +27,7 @@ export interface CreateTransactionInput {
   paymentInstrument?: Record<string, unknown>;
   mobile: string;
   gateway?: 'phonepe' | 'cashfree';
+  couponCode?: string;
 }
 async function isTransactionIdUnique(merchantTransactionId: string): Promise<boolean> {
     const existingTransaction = await paymentTransactionRepository.findOne({ merchantTransactionId });
@@ -55,11 +57,21 @@ export const paymentService = {
     if(userDetails.plan){
         return {status: false, message: "User already has an active plan"}
     }
-    // const gateway = data.gateway || 'cashfree';
+
+    let payableAmount = data.amount;
+    let redemptionId: import('mongoose').Types.ObjectId | undefined;
+
+    if (data.couponCode) {
+      const reservation = await couponService.reserve(data.couponCode, data.userId, 'membership', data.amount);
+      payableAmount = reservation.finalAmount;
+      redemptionId = reservation.redemptionId;
+    }
+
     const result = gateway === 'cashfree'
-      ? await validateAndInitiatePaymentAtCashfree({ amount: data.amount, userId: data.userId, mobile: data.mobile, plan: data.plan })
-      : await validateAndInitiatePaymentAtPhonePe({ amount: data.amount, userId: data.userId, mobile: data.mobile, plan: data.plan });
+      ? await validateAndInitiatePaymentAtCashfree({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId })
+      : await validateAndInitiatePaymentAtPhonePe({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId });
     if(!result.status){
+      if (redemptionId) await couponService.rollback(redemptionId);
       throw new AppError(result.message || 'Error while initiating payment request', 400);
     }
     return {
@@ -100,6 +112,7 @@ export const paymentService = {
     }
     if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
         await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{ paymentStatus: code, ...(data?.data?.paymentInstrument &&{paymentInstrument: data?.data?.paymentInstrument})}})
+        if (transaction.redemptionId) await couponService.rollback(transaction.redemptionId)
         return {status: true, message: "Your payment has failed. Please try again", code: 200, isErrorForUser: true}
     }
     console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while handling user payment completion with message:  got unexpected code: ${code} in check status api`, JSON.stringify({code, data, status, statusCode, message, transaction}))
@@ -308,7 +321,8 @@ async function checkAndUpdateAfter25Seconds(transactionId: string, amount: numbe
           return {status: true, code: 200}
       }
       if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
-          await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set: { paymentStatus: code, ...(data?.paymentInstrument && {paymentInstrument: data?.paymentInstrument})}})
+          const tx = await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set: { paymentStatus: code, ...(data?.paymentInstrument && {paymentInstrument: data?.paymentInstrument})}})
+          if (tx?.redemptionId) await couponService.rollback(tx.redemptionId)
           return {status: true, message: "Your payment has failed. Please try again", code: 200}
       }
 
@@ -349,6 +363,7 @@ async function processPayment(userId: string, merchantTransactionId: string, amo
       const {status, message, data: refundResponseData} = await initiateGatewayRefund(merchantTransactionId)
       console.log(`${activity} | Initiated refund for merchantTransactionId: ${merchantTransactionId}`, {status, message, refundResponseData, userId})
       await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId}, {$set:{paymentStatus: PAYMENT_STATUS.refundInitiated, refundId: refundResponseData?._id}})
+      if (transactionDetails.redemptionId) await couponService.rollback(transactionDetails.redemptionId)
       return {status:false, message: `Your application fee is already paid. We have initiated refund for this payment.`, isErrorForUser: true}
   }
   const updateDetails = {
@@ -357,6 +372,7 @@ async function processPayment(userId: string, merchantTransactionId: string, amo
       }
   }
   await userRepository.findOneAndUpdate({_id: userId, isActive : true}, updateDetails)
+  if (transactionDetails.redemptionId) await couponService.confirm(transactionDetails.redemptionId, merchantTransactionId)
 
   console.log(`${activity} | End | Processing application fee payment for userId: ${userId}, merchantTransactionId: ${merchantTransactionId}`)
 
@@ -387,7 +403,8 @@ async function pendingPaymentReconciliationProcess(transactionId: string, amount
                     return {status, data:refundResponseData, message}
                 }
                 if(PAYMENT_FAILED_STATUS.includes(code as typeof PAYMENT_FAILED_STATUS[number])){
-                    await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: code, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
+                    const tx = await paymentTransactionRepository.findOneAndUpdate({merchantTransactionId: transactionId}, {$set:{paymentStatus: code, ...(data?.paymentInstrument &&{paymentInstrument: data?.paymentInstrument})}})
+                    if (tx?.redemptionId) await couponService.rollback(tx.redemptionId)
                     return {status: false, message: "Your payment has failed. Please try again", code: 200}
                 }
                 duration = duration - interval

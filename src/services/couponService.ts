@@ -121,7 +121,7 @@ export const couponService = {
     }
 
     const discountAmount = calcDiscount(coupon, originalAmount);
-    const finalAmount = originalAmount - discountAmount;
+    const finalAmount = Math.round((originalAmount - discountAmount) * 100) / 100;
 
     return {
       valid: true,
