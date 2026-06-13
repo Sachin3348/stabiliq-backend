@@ -26,7 +26,7 @@ async function generateUniqueTransactionId() {
 
 //PhonpePe PAY API: https://developer.phonepe.com/v1/reference/pay-api-1/
 //Initiate new transaction at PhonePe and returns the PhonePe checkout page url for payment
-export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobile}: {amount: number, userId: string, mobile: string}): Promise<{status: boolean, checkoutPageUrl?: string, message?: string }> {
+export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobile, plan}: {amount: number, userId: string, mobile: string, plan?: 'basic' | 'pro'}): Promise<{status: boolean, checkoutPageUrl?: string, message?: string; paymentSessionId?: string; }> {
     const merchantTransactionId = await generateUniqueTransactionId();
     let merchantId = process.env.PST_PHONEPE_MERCHANT_ID
     let saltKey = process.env.PST_PHONEPE_SALT_KEY
@@ -74,6 +74,7 @@ export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobil
         amount: amountInPaisa,
         paymentStatus: PAYMENT_STATUS.paymentInitiated,
         type: TRANSACTION_TYPE.payment,
+        ...(plan && { plan }),
     }
     await paymentTransactionRepository.create(transactionDetails)
     return {status: true, checkoutPageUrl }

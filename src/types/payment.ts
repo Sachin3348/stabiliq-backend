@@ -55,4 +55,6 @@ export interface ValidateAndInitiatePaymentAtPhonePeResponse {
   status: boolean;
   checkoutPageUrl?: string;
   message?: string;
+  paymentSessionId?: string;
+  pgGateway?: string;
 }

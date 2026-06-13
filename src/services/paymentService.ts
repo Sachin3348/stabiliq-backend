@@ -57,14 +57,16 @@ export const paymentService = {
     }
     // const gateway = data.gateway || 'cashfree';
     const result = gateway === 'cashfree'
-      ? await validateAndInitiatePaymentAtCashfree({ amount: data.amount, userId: data.userId, mobile: data.mobile })
-      : await validateAndInitiatePaymentAtPhonePe({ amount: data.amount, userId: data.userId, mobile: data.mobile });
+      ? await validateAndInitiatePaymentAtCashfree({ amount: data.amount, userId: data.userId, mobile: data.mobile, plan: data.plan })
+      : await validateAndInitiatePaymentAtPhonePe({ amount: data.amount, userId: data.userId, mobile: data.mobile, plan: data.plan });
     if(!result.status){
       throw new AppError(result.message || 'Error while initiating payment request', 400);
     }
     return {
       status: result.status,
       checkoutPageUrl: result.checkoutPageUrl,
+      paymentSessionId: result.paymentSessionId,
+      pgGateway: gateway,
       message: result.message,
     };
   },
@@ -351,7 +353,7 @@ async function processPayment(userId: string, merchantTransactionId: string, amo
   }
   const updateDetails = {
       $set:{
-          plan: getPlan(amount/100),
+          plan: transactionDetails.plan || getPlan(amount/100),
       }
   }
   await userRepository.findOneAndUpdate({_id: userId, isActive : true}, updateDetails)

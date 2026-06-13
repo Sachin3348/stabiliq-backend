@@ -53,6 +53,36 @@ export const paymentController = {
     }
 },
 
+  async handlePaymentCompletionCashfree(req: Request, res: Response){
+    const {order_id:transactionId} = req.query || {}
+    const redirectWebisteUrl = process.env.STABILIQ_FE_URL || 'https://stabiliq.in'
+    const activity = `Cashfree UI Callback`
+    // const loggingData = {
+    //     activity:'handleUserPaymentCompletion',
+    //     checksum,
+    //     transactionId,
+    //     amount
+    // }
+    try {
+        // loggingService.logActivity(loggingData)
+        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Start | Processing Cashfree payment for merchantTransactionId: ${transactionId}`)
+        if(!transactionId){
+            console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Response payload missing any of checksum, transactionId, amount field.`, { transactionId})
+            return res.status(400).send({status: 400, message: "Invalid request."})
+        }
+        const {} = await paymentService.handleUserPaymentCompletion(String(transactionId), activity)
+        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | End | Processing Cashfree payment for merchantTransactionId: ${transactionId}`)
+        return res.redirect(`${redirectWebisteUrl}/payment-status`)
+    } catch (error: any) {
+        // loggingService.logError(error, loggingData)
+        // const attributes = [process.env.SERVICE_ENVIRONMENT, timeStampToDateAndTimeWithSeconds(Date.now()), (error?.response?.data?.message || error?.message), (error?.response?.status || 500), `FST Payment UI Callback request with merchantTransactionId: ${transactionId} and amount is ${amount}`]
+        // sendErrorNotification({mobiles: JSON.parse(process.env.Cashfree_PAYMENT_ERROR_NOTIFICATION_MOBILES || '[]'), attributes})
+        console.log(`${activity} | ${timeStampToDateAndTimeWithSeconds(Date.now())} | Error while handling user payment completion with message: ${error?.response?.data?.message || error?.message}`, JSON.stringify(error), {merchantTransactionId:transactionId})
+        return res.redirect(`${redirectWebisteUrl}/payment-status`)
+    }
+},
+
+
 async processPaymentS2SCallback(req: Request, res: Response){
     const activity = "Phonepe Payment S2S Callback"
     const {response=null} = req?.body || {}

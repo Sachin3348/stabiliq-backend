@@ -37,7 +37,7 @@ function cashfreeHeaders() {
     };
 }
 
-export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mobile }: { amount: number; userId: string; mobile: string }): Promise<{ status: boolean; checkoutPageUrl?: string; message?: string }> {
+export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mobile, plan }: { amount: number; userId: string; mobile: string; plan?: 'basic' | 'pro' }): Promise<{ status: boolean; paymentSessionId?:string; checkoutPageUrl?: string; message?: string; }> {
     const orderId = await generateUniqueTransactionId();
     const hostUrl = process.env.CASHFREE_PG_HOST_URL || 'https://sandbox.cashfree.com/pg';
 
@@ -63,12 +63,12 @@ export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mob
         return { status: false, message: 'Error while initiating payment request' };
     }
 
-    const checkoutBaseUrl = hostUrl.includes('sandbox')
-        ? 'https://payments-test.cashfree.com/order'
-        : 'https://payments.cashfree.com/order';
+    // const checkoutBaseUrl = hostUrl.includes('sandbox')
+    //     ? 'https://payments-test.cashfree.com/order'
+    //     : 'https://payments.cashfree.com/order';
 
     // Cashfree hosted checkout: session_id goes as a hash fragment (no slash before #)
-    const checkoutPageUrl = `${checkoutBaseUrl}/#${payment_session_id}`;
+    const checkoutPageUrl = "";
 
     await paymentTransactionRepository.create({
         merchantTransactionId: orderId,
@@ -78,10 +78,11 @@ export async function validateAndInitiatePaymentAtCashfree({ amount, userId, mob
         paymentStatus: PAYMENT_STATUS.paymentInitiated,
         type: TRANSACTION_TYPE.payment,
         gateway: 'cashfree',
+        ...(plan && { plan }),
     });
 
-    console.log('Cashfree payment initiated', { mobile, userId, amount, orderId });
-    return { status: true, checkoutPageUrl };
+    console.log('Cashfree payment initiated', { mobile, userId, amount, orderId, payment_session_id });
+    return { status: true, checkoutPageUrl, paymentSessionId: payment_session_id };
 }
 
 export async function checkCashfreePaymentStatus(orderId: string, amount: number, userId: string): Promise<{ status: boolean; code: string; data?: any; statusCode?: number; message?: string }> {

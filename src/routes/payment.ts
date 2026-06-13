@@ -17,6 +17,9 @@ router.post('/callback', phonepeS2SCallbackAuth, paymentController.processPaymen
 
 router.get("/payment-status", getCurrentUser, paymentController.getLastPaymentStatus)
 
+//cashfree return url callback
+router.get("/cashfree/status", paymentController.handlePaymentCompletionCashfree)
+
 //called when refund transaction reach a terminal state
 // router.post('/refund', phonepeS2SCallbackAuth, paymentController.processRefundS2Scallback)
 
