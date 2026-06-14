@@ -128,17 +128,17 @@ async function getGmailTransporter(): Promise<Transporter> {
 /** Get SMTP transporter (cached) */
 function getSmtpTransporter(): Transporter | null {
   if (smtpTransporter) return smtpTransporter;
-  const { SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS } = env;
+  const { SMTP_HOST, SMTP_USER, SMTP_PASS } = env;
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) return null;
   smtpTransporter = nodemailer.createTransport({
     host: SMTP_HOST,
-    port: SMTP_PORT,
-    secure: SMTP_SECURE,
+    port: 587,
+    secure: false,
     requireTLS: true,
     pool: true,
     maxConnections: 5,
     maxMessages: 100,
-    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    auth: { user: "swapneil@stabiliq.in", pass: SMTP_PASS },
     connectionTimeout: 10000,
     greetingTimeout: 8000,
     socketTimeout: 15000,
