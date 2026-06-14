@@ -19,6 +19,8 @@ export interface SendMailResult {
 }
 
 let smtpTransporter: Transporter | null = null;
+let gmailTransporter: Transporter | null = null;
+let gmailTransporterExpiresAt = 0;
 
 /** Prefer SendGrid when API key is set (works on Render; uses HTTPS) */
 function isSendGridConfigured(): boolean {
@@ -97,11 +99,16 @@ async function getGmailAccessToken(): Promise<string> {
   }
 }
 
-/** Create a Nodemailer transporter for Gmail OAuth2 */
-async function createGmailTransporter(): Promise<Transporter> {
+/** Get Gmail transporter (cached, re-created when token expires in ~55 min) */
+async function getGmailTransporter(): Promise<Transporter> {
+  if (gmailTransporter && Date.now() < gmailTransporterExpiresAt) {
+    return gmailTransporter;
+  }
   const accessToken = await getGmailAccessToken();
-  return nodemailer.createTransport({
+  gmailTransporter = nodemailer.createTransport({
     service: 'gmail',
+    pool: true,
+    maxConnections: 5,
     auth: {
       type: 'OAuth2',
       user: env.GMAIL_USER,
@@ -110,10 +117,12 @@ async function createGmailTransporter(): Promise<Transporter> {
       refreshToken: env.GMAIL_REFRESH_TOKEN,
       accessToken,
     },
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
   });
+  gmailTransporterExpiresAt = Date.now() + 55 * 60 * 1000;
+  return gmailTransporter;
 }
 
 /** Get SMTP transporter (cached) */
@@ -125,10 +134,13 @@ function getSmtpTransporter(): Transporter | null {
     host: SMTP_HOST,
     port: SMTP_PORT,
     secure: SMTP_SECURE,
+    pool: true,
+    maxConnections: 5,
+    maxMessages: 100,
     auth: { user: SMTP_USER, pass: SMTP_PASS },
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
   });
   return smtpTransporter;
 }
@@ -145,7 +157,7 @@ export async function sendMail(options: SendMailOptions): Promise<SendMailResult
   let transport: Transporter | null = null;
   try {
     if (isGmailOAuthConfigured()) {
-      transport = await createGmailTransporter();
+      transport = await getGmailTransporter();
     } else {
       transport = getSmtpTransporter();
     }
@@ -161,6 +173,7 @@ export async function sendMail(options: SendMailOptions): Promise<SendMailResult
   }
 
   const to = Array.isArray(options.to) ? options.to.join(', ') : options.to;
+  const t0 = Date.now();
   try {
     const info = await transport.sendMail({
       from: env.MAIL_FROM,
@@ -170,13 +183,59 @@ export async function sendMail(options: SendMailOptions): Promise<SendMailResult
       html: options.html,
       replyTo: options.replyTo,
     });
-    logger.info('Email sent', { messageId: info.messageId, to });
+    logger.info('Email sent', { messageId: info.messageId, to, durationMs: Date.now() - t0 });
     return { success: true, messageId: info.messageId };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    logger.error('Email send failed', { error: message, to });
+    logger.error('Email send failed', { error: message, to, durationMs: Date.now() - t0 });
     return { success: false, error: message };
   }
+}
+
+/**
+ * Call once at app startup to warm up the transport.
+ * No-op for SendGrid (HTTP-based). For SMTP/Gmail, creates the pooled transporter eagerly.
+ */
+export async function initEmailTransport(): Promise<void> {
+  if (isSendGridConfigured()) {
+    sgMail.setApiKey(env.SENDGRID_API_KEY);
+    logger.info('Email transport: SendGrid ready');
+    return;
+  }
+  if (isGmailOAuthConfigured()) {
+    try {
+      await getGmailTransporter();
+      logger.info('Email transport: Gmail OAuth2 ready');
+    } catch (err) {
+      logger.error('Email transport: Gmail init failed', { error: err instanceof Error ? err.message : err });
+    }
+    return;
+  }
+  const t = getSmtpTransporter();
+  if (t) {
+    try {
+      await t.verify();
+      logger.info('Email transport: SMTP ready');
+    } catch (err) {
+      logger.error('Email transport: SMTP verify failed', { error: err instanceof Error ? err.message : err });
+    }
+  } else {
+    logger.warn('Email transport: not configured');
+  }
+}
+
+/**
+ * Fire-and-forget variant. Returns immediately; logs failures in background.
+ * Use for OTP and non-critical transactional emails.
+ */
+export function sendMailAsync(options: SendMailOptions): void {
+  sendMail(options).then((result) => {
+    if (!result.success) {
+      logger.error('Background email failed', { error: result.error, to: options.to });
+    }
+  }).catch((err) => {
+    logger.error('Background email threw', { error: err instanceof Error ? err.message : String(err) });
+  });
 }
 
 /** Which provider is active (for logs). */
@@ -196,7 +255,7 @@ export async function verifyTransport(): Promise<boolean> {
     return true;
   }
   const transport = isGmailOAuthConfigured()
-    ? await createGmailTransporter().catch(() => null)
+    ? await getGmailTransporter().catch(() => null)
     : getSmtpTransporter();
   if (!transport) return false;
   try {

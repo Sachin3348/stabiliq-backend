@@ -27,8 +27,8 @@ export const MEMBERSHIP_PLANS: Record<
   'basic' | 'pro',
   { amount: number, gst: number, totalAmount: number, planName: 'basic' | 'pro' }
 > = {
-  basic: { amount: 999, gst: 179.82, totalAmount: 1178.82, planName: 'basic' },
-  pro: { amount: 2499, gst: 449.82, totalAmount: 2948.82, planName: 'pro' },
+  basic: { amount: 1999, gst: 359.82, totalAmount: 2358.82, planName: 'basic' },
+  pro: { amount: 4999, gst: 899.82, totalAmount: 5898.82, planName: 'pro' },
 };
 
 export const CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS = [
