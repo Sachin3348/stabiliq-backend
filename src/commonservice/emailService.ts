@@ -134,6 +134,7 @@ function getSmtpTransporter(): Transporter | null {
     host: SMTP_HOST,
     port: SMTP_PORT,
     secure: SMTP_SECURE,
+    requireTLS: true,
     pool: true,
     maxConnections: 5,
     maxMessages: 100,
@@ -213,12 +214,11 @@ export async function initEmailTransport(): Promise<void> {
   }
   const t = getSmtpTransporter();
   if (t) {
-    try {
-      await t.verify();
+    t.verify().then(() => {
       logger.info('Email transport: SMTP ready');
-    } catch (err) {
-      logger.error('Email transport: SMTP verify failed', { error: err instanceof Error ? err.message : err });
-    }
+    }).catch((err) => {
+      logger.warn('Email transport: SMTP verify failed (non-fatal)', { error: err instanceof Error ? err.message : err });
+    });
   } else {
     logger.warn('Email transport: not configured');
   }
