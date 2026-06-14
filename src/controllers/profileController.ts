@@ -38,6 +38,13 @@ export const profileController = {
       // Upsert resume fields into ProfileSubmission.
       // runValidators is skipped in the repository so jobDescription (required) won't block insert.
       const existing = await profileSubmissionRepository.findByUserId(userId);
+
+      if (existing?.resumeKey) {
+        await storageProvider.delete(existing.resumeKey).catch((err) =>
+          console.error(`[uploadResume] Failed to delete old R2 key: ${existing.resumeKey}`, err)
+        );
+      }
+
       const resumeFields = {
         resumeUrl,
         resumeKey: key,
