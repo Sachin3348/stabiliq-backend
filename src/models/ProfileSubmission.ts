@@ -22,6 +22,27 @@ const parsedProjectSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const scoreComponentSchema = new mongoose.Schema(
+  { score: Number, maxScore: Number, feedback: String },
+  { _id: false }
+);
+
+const resumeScoreSchema = new mongoose.Schema(
+  {
+    overallScore: Number,
+    detectedRole: String,
+    detectedDomain: String,
+    impactScore: scoreComponentSchema,
+    brevityScore: scoreComponentSchema,
+    styleScore: scoreComponentSchema,
+    skillsScore: scoreComponentSchema,
+    sectionsScore: scoreComponentSchema,
+    topIssues: [String],
+    strengths: [String],
+  },
+  { _id: false }
+);
+
 const profileSubmissionSchema = new mongoose.Schema(
   {
     userId: {
@@ -75,6 +96,11 @@ const profileSubmissionSchema = new mongoose.Schema(
       experience: [parsedExperienceSchema],
       projects: [parsedProjectSchema],
     },
+    resumeScore: {
+      type: resumeScoreSchema,
+      default: null,
+    },
+
     /** LinkedIn profile AI review result — cached per user */
     linkedInReview: {
       type: mongoose.Schema.Types.Mixed,
@@ -107,6 +133,25 @@ export interface ParsedProject {
   bullets: ParsedBullet[];
 }
 
+export interface ScoreComponent {
+  score: number;
+  maxScore: number;
+  feedback: string;
+}
+
+export interface ResumeScore {
+  overallScore: number;
+  detectedRole: string;
+  detectedDomain: string;
+  impactScore: ScoreComponent;
+  brevityScore: ScoreComponent;
+  styleScore: ScoreComponent;
+  skillsScore: ScoreComponent;
+  sectionsScore: ScoreComponent;
+  topIssues: string[];
+  strengths: string[];
+}
+
 export interface ParsedResume {
   experience: ParsedExperience[];
   projects: ParsedProject[];
@@ -125,6 +170,7 @@ export interface IProfileSubmissionDoc extends mongoose.Document {
   adminNote?: string | null;
   evaluatedAt?: Date | null;
   parsedResume?: ParsedResume;
+  resumeScore?: ResumeScore | null;
   linkedInReview?: Record<string, unknown> | null;
   linkedInReviewedAt?: Date | null;
   createdAt: Date;

@@ -33,7 +33,7 @@ export const profileController = {
       });
 
       // Call Python backend for parsing (non-blocking — null if Python is down)
-      const parsedResume = await parseResumeViaPython(req.file.buffer, req.file.originalname);
+      const parseResult = await parseResumeViaPython(req.file.buffer, req.file.originalname);
 
       // Upsert resume fields into ProfileSubmission.
       // runValidators is skipped in the repository so jobDescription (required) won't block insert.
@@ -41,7 +41,8 @@ export const profileController = {
       const resumeFields = {
         resumeUrl,
         resumeKey: key,
-        ...(parsedResume && { parsedResume }),
+        ...(parseResult && { parsedResume: parseResult.parsedResume }),
+        ...(parseResult?.resumeScore && { resumeScore: parseResult.resumeScore }),
         ...(jobDescription?.trim() && { jobDescription: jobDescription.trim() }),
         ...(linkedinUrl?.trim() && { linkedinUrl: linkedinUrl.trim() }),
       };
@@ -55,7 +56,8 @@ export const profileController = {
         success: true,
         fileUrl: resumeUrl,
         filename: req.file.originalname,
-        parsedResume,
+        parsedResume: parseResult?.parsedResume ?? null,
+        resumeScore: parseResult?.resumeScore ?? null,
       });
     } catch (err) {
       next(err);

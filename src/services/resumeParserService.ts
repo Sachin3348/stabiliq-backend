@@ -1,7 +1,7 @@
 import axios from 'axios';
 import FormData from 'form-data';
 import { randomUUID } from 'crypto';
-import type { ParsedResume } from '../models/ProfileSubmission';
+import type { ParsedResume, ResumeScore } from '../models/ProfileSubmission';
 
 const RESUME_PARSER_URL = process.env.RESUME_PARSER_URL || 'http://localhost:8080';
 
@@ -24,12 +24,52 @@ interface PythonProject {
   bullets: string[];
 }
 
+interface PythonScoreComponent {
+  score: number;
+  max_score: number;
+  feedback: string;
+}
+
+interface PythonScore {
+  overall_score: number;
+  detected_role: string;
+  detected_domain: string;
+  impact_score: PythonScoreComponent;
+  brevity_score: PythonScoreComponent;
+  style_score: PythonScoreComponent;
+  skills_score: PythonScoreComponent;
+  sections_score: PythonScoreComponent;
+  top_issues: string[];
+  strengths: string[];
+}
+
 interface PythonParseResumeResponse {
   work_experience: PythonWorkExperience[];
   projects: PythonProject[];
+  score?: PythonScore;
 }
 
 // ─── mapper ───────────────────────────────────────────────────────────────────
+
+function mapScore(s: PythonScore): ResumeScore {
+  const mapComponent = (c: PythonScoreComponent) => ({
+    score: c.score,
+    maxScore: c.max_score,
+    feedback: c.feedback,
+  });
+  return {
+    overallScore: s.overall_score,
+    detectedRole: s.detected_role,
+    detectedDomain: s.detected_domain,
+    impactScore: mapComponent(s.impact_score),
+    brevityScore: mapComponent(s.brevity_score),
+    styleScore: mapComponent(s.style_score),
+    skillsScore: mapComponent(s.skills_score),
+    sectionsScore: mapComponent(s.sections_score),
+    topIssues: s.top_issues ?? [],
+    strengths: s.strengths ?? [],
+  };
+}
 
 function mapToStructured(python: PythonParseResumeResponse): ParsedResume {
   const workExperience = python.work_experience ?? [];
@@ -87,10 +127,16 @@ export async function optimizeExperience(
  * Sends PDF buffer to the Python resume parser microservice.
  * Returns null (without throwing) if the service is unreachable — upload still succeeds.
  */
+export interface ParseResumeResult {
+  parsedResume: ParsedResume;
+  resumeScore: ResumeScore | null;
+  raw: PythonParseResumeResponse;
+}
+
 export async function parseResumeViaPython(
   buffer: Buffer,
   originalname: string
-): Promise<ParsedResume | null> {
+): Promise<ParseResumeResult | null> {
   try {
     const form = new FormData();
     form.append('file', buffer, {
@@ -107,7 +153,11 @@ export async function parseResumeViaPython(
       }
     );
 
-    return mapToStructured(response.data);
+    return {
+      parsedResume: mapToStructured(response.data),
+      resumeScore: response.data.score ? mapScore(response.data.score) : null,
+      raw: response.data,
+    };
   } catch (err) {
     console.error('[resumeParser] Python parse call failed — saving null parsedResume', err);
     return null;
