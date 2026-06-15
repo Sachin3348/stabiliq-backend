@@ -31,73 +31,77 @@ function generateOtp(): string {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-async function storeOtp(email: string, otp: string): Promise<void> {
+async function storeOtp(phone: string, otp: string): Promise<void> {
   const expiresAt = new Date(Date.now() + env.OTP_TTL_MINUTES * 60 * 1000);
-  await userOtpVerificationRepository.create(email, otp, expiresAt);
+  await userOtpVerificationRepository.create(phone, otp, expiresAt);
 }
 
 export const authService = {
-  async sendOtp(email: string, _phone: string): Promise<SendOtpResult> {
+  async sendOtp(phone: string, _email?: string): Promise<SendOtpResult> {
     const otp = generateOtp();
-    await storeOtp(email, otp);
+    await storeOtp(phone, otp);
 
-    if (_phone && isAiSensyConfigured()) {
-      sendWhatsAppOtpAsync(_phone, otp, env.OTP_TTL_MINUTES);
+    if (isAiSensyConfigured()) {
+      sendWhatsAppOtpAsync(phone, otp, env.OTP_TTL_MINUTES);
     }
 
     return {
       success: true,
-      message: 'OTP sent successfully to your email',
+      message: 'OTP sent successfully to your WhatsApp',
     };
   },
 
-  async  verifyOtp(
-    email: string,
-    phone: string | undefined,
+  async verifyOtp(
+    phone: string,
     otp: string,
-    name: string | undefined,
+    name?: string,
+    email?: string,
   ): Promise<VerifyOtpResult> {
-    const valid = await userOtpVerificationRepository.validateAndConsume(email, otp);
+    const valid = await userOtpVerificationRepository.validateAndConsume(phone, otp);
     if (!valid) {
       throw new AppError('Invalid or expired OTP', 400);
     }
-    let user = await userRepository.findByEmail(email);
+    let user = await userRepository.findByPhone(phone);
     const enrollmentDate = new Date();
 
     if (user) {
       const userData: UserDto = userRepository.toUserDto(user);
-      const token = createAccessToken({ sub: userData.email, id: userData.id, mobile: userData.phone });
+      const token = createAccessToken({ sub: phone, id: userData.id, mobile: phone });
       return { success: true, token, user: userData };
     }
 
     user = await userRepository.create({
-      email,
+      phone,
+      email: email ?? undefined,
       name: name ?? '',
-      phone: phone ?? '',
       enrollmentDate,
       isActive: true,
     });
     const userData: UserDto = userRepository.toUserDto(user);
-    const token = createAccessToken({ sub: userData.email, id: userData.id, mobile: userData.phone });
+    const token = createAccessToken({ sub: phone, id: userData.id, mobile: phone });
     return { success: true, token, user: userData };
   },
 
-  async login(email: string): Promise<LoginResult> {
-    const user = await userRepository.findByEmail(email);
+  async login(phone: string): Promise<LoginResult> {
+    const user = await userRepository.findByPhone(phone);
     if (!user) {
       throw new AppError('User not found. Please sign up first.', 404);
     }
     const otp = generateOtp();
-    await storeOtp(email, otp);
+    await storeOtp(phone, otp);
+
+    if (isAiSensyConfigured()) {
+      sendWhatsAppOtpAsync(phone, otp, env.OTP_TTL_MINUTES);
+    }
 
     return {
       success: true,
-      message: 'OTP sent successfully to your email',
+      message: 'OTP sent successfully to your WhatsApp',
     };
   },
 
   async me(payload: JwtPayload): Promise<MeResult> {
-    const user = await userRepository.findByEmail(payload.sub);
+    const user = await userRepository.findByPhone(payload.sub);
     if (!user) {
       throw new AppError('User not found', 404);
     }

@@ -16,7 +16,7 @@ export function isAiSensyConfigured(): boolean {
 export async function sendWhatsAppOtp(
   phone: string,
   otp: string,
-  ttlMinutes: number,
+  _: number,
 ): Promise<SendWhatsAppOtpResult> {
   try {
     await axios.post(
@@ -26,7 +26,20 @@ export async function sendWhatsAppOtp(
         campaignName: env.AISENSY_CAMPAIGN_NAME,
         destination: phone,
         userName: env.AISENSY_USER_NAME,
-        templateParams: [otp, String(ttlMinutes)],
+        templateParams: [otp],
+        buttons: [
+          {
+            type: "button",
+            sub_type: "url",
+            index: 0,
+            parameters: [
+              {
+                type: "text",
+                text: String(otp)
+              }
+            ]
+          }
+        ],
       },
       { headers: { 'Content-Type': 'application/json' }, timeout: 10000 },
     );

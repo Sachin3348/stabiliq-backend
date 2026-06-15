@@ -11,8 +11,7 @@ const userSchema = new mongoose.Schema(
     },
     email: {
       type: String,
-      required: true,
-      unique: true,
+      required: false,
       lowercase: true,
       trim: true,
     },
@@ -25,6 +24,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      index: true,
     },
     plan: {
       type: String,
@@ -59,7 +59,7 @@ userSchema.set('toJSON', {
 
 export interface IUserDoc extends mongoose.Document {
   id: ObjectId;
-  email: string;
+  email?: string;
   name: string;
   phone: string;
   plan?: string;

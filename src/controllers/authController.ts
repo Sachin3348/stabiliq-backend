@@ -5,8 +5,8 @@ import { sendError, sendSuccess } from '../utils/response';
 export const authController = {
   async sendOtp(req: Request, res: Response, next: (err: unknown) => void): Promise<void> {
     try {
-      const { email, phone } = req.body as { email: string; phone: string };
-      const result = await authService.sendOtp(email, phone);
+      const { phone, email } = req.body as { phone: string; email?: string };
+      const result = await authService.sendOtp(phone, email);
       sendSuccess(res, 200, result);
     } catch (err) {
       next(err);
@@ -15,14 +15,13 @@ export const authController = {
 
   async verifyOtp(req: Request, res: Response, next: (err: unknown) => void): Promise<void> {
     try {
-      const { email, phone, otp, name } = req.body as {
-        email: string;
-        phone?: string;
+      const { phone, otp, name, email } = req.body as {
+        phone: string;
         otp: string;
         name?: string;
-        // plan?: string;
+        email?: string;
       };
-      const result = await authService.verifyOtp(email, phone, otp, name);
+      const result = await authService.verifyOtp(phone, otp, name, email);
       sendSuccess(res, 200, result);
     } catch (err) {
       next(err);
@@ -31,8 +30,8 @@ export const authController = {
 
   async login(req: Request, res: Response, next: (err: unknown) => void): Promise<void> {
     try {
-      const { email } = req.body as { email: string };
-      const result = await authService.login(email);
+      const { phone } = req.body as { phone: string };
+      const result = await authService.login(phone);
       sendSuccess(res, 200, result);
     } catch (err) {
       next(err);

@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 /** User as returned in API responses (no internal fields) */
 export interface UserDto {
   id: mongoose.Types.ObjectId;
-  email: string;
+  email?: string;
   name: string;
   phone: string;
   plan?: string;

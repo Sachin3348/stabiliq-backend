@@ -9,10 +9,9 @@ const userOtpVerificationSchema = new mongoose.Schema(
       unique: true,
       required: true,
     },
-    email: {
+    phone: {
       type: String,
       required: true,
-      lowercase: true,
       trim: true,
       index: true,
     },
@@ -58,7 +57,7 @@ userOtpVerificationSchema.set('toJSON', {
 
 export interface IUserOtpVerificationDoc extends mongoose.Document {
   id: string;
-  email: string;
+  phone: string;
   otp: string;
   expiresAt: Date;
   consumed: boolean;

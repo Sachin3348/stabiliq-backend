@@ -18,6 +18,10 @@ export const userRepository = {
     return User.findOne({ email }).exec();
   },
 
+  async findByPhone(phone: string): Promise<IUserDoc | null> {
+    return User.findOne({ phone }).exec();
+  },
+
   async findOne(query: any): Promise<IUserDoc | null> {
     return User.findOne(query).exec();
   },
@@ -25,7 +29,7 @@ export const userRepository = {
     return User.findOneAndUpdate(query, update, { new: true }).exec();
   },
   async create(data: {
-    email: string;
+    email?: string;
     name: string;
     phone: string;
     plan?: string;

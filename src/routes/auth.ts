@@ -12,27 +12,27 @@ router.use(requestTimeout(25000));
 
 router.post(
   '/send-otp',
-  [body('email').isEmail().normalizeEmail(), body('phone').optional().trim()],
-  validate([body('email')], 'Email is required'),
+  [body('phone').notEmpty().trim(), body('email').optional().isEmail().normalizeEmail()],
+  validate([body('phone')], 'Phone is required'),
   (req: Request, res: Response, next: NextFunction) => authController.sendOtp(req, res, next)
 );
 
 router.post(
   '/verify-otp',
   [
-    body('email').isEmail().normalizeEmail(),
-    body('phone').optional().trim(),
+    body('phone').notEmpty().trim(),
     body('otp').notEmpty(),
     body('name').optional().trim(),
+    body('email').optional().isEmail().normalizeEmail(),
   ],
-  validate([body('email'), body('otp')], 'email and otp are required'),
+  validate([body('phone'), body('otp')], 'phone and otp are required'),
   (req: Request, res: Response, next: NextFunction) => authController.verifyOtp(req, res, next)
 );
 
 router.post(
   '/login',
-  [body('email').isEmail().normalizeEmail()],
-  validate([body('email')], 'Email is required'),
+  [body('phone').notEmpty().trim()],
+  validate([body('phone')], 'Phone is required'),
   (req: Request, res: Response, next: NextFunction) => authController.login(req, res, next)
 );
 
