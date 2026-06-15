@@ -4,7 +4,7 @@ import { createAccessToken } from '../middlewares/auth';
 import type { UserDto } from '../types/user';
 import type { JwtPayload } from '../types/auth';
 import { AppError } from '../middlewares/AppError';
-import { sendMailAsync } from '../commonservice/emailService';
+import { isAiSensyConfigured, sendWhatsAppOtpAsync } from '../commonservice/aisensyService';
 import { env } from '../config/env';
 
 export interface SendOtpResult {
@@ -41,12 +41,9 @@ export const authService = {
     const otp = generateOtp();
     await storeOtp(email, otp);
 
-    sendMailAsync({
-      to: email,
-      subject: 'Your Stabiliq verification code',
-      text: `Your OTP is ${otp}. It is valid for ${env.OTP_TTL_MINUTES} minutes.`,
-      html: `<p>Your verification code is <strong>${otp}</strong>.</p><p>It is valid for ${env.OTP_TTL_MINUTES} minutes.</p>`,
-    });
+    if (_phone && isAiSensyConfigured()) {
+      sendWhatsAppOtpAsync(_phone, otp, env.OTP_TTL_MINUTES);
+    }
 
     return {
       success: true,
@@ -92,13 +89,6 @@ export const authService = {
     }
     const otp = generateOtp();
     await storeOtp(email, otp);
-
-    sendMailAsync({
-      to: email,
-      subject: 'Your Stabiliq login code',
-      text: `Your OTP is ${otp}. It is valid for ${env.OTP_TTL_MINUTES} minutes.`,
-      html: `<p>Your login code is <strong>${otp}</strong>.</p><p>It is valid for ${env.OTP_TTL_MINUTES} minutes.</p>`,
-    });
 
     return {
       success: true,

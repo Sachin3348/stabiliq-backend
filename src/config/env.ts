@@ -29,6 +29,10 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS ?? '',
   /** OTP validity in minutes (for email OTP) */
   OTP_TTL_MINUTES: parseInt(process.env.OTP_TTL_MINUTES ?? '10', 10),
+  /** AiSensy WhatsApp OTP */
+  AISENSY_API_KEY: process.env.AISENSY_API_KEY ?? '',
+  AISENSY_CAMPAIGN_NAME: process.env.AISENSY_CAMPAIGN_NAME ?? '',
+  AISENSY_USER_NAME: process.env.AISENSY_USER_NAME ?? '',
 } as const;
 
 export type Env = typeof env;

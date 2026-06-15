@@ -3,7 +3,6 @@ import cors from 'cors';
 import { connectDB, disconnectDB } from './config/database';
 import { env } from './config/env';
 import logger from './commonservice/logger';
-import { initEmailTransport } from './commonservice/emailService';
 import { errorHandler } from './middlewares/errorHandler';
 
 import apiRoutes from './routes/index';
@@ -64,7 +63,6 @@ process.on('SIGINT', async () => {
 const startServer = async (): Promise<void> => {
   try {
     await connectDB();
-    await initEmailTransport();
     app.listen(PORT, () => {
       logger.info(`✓ Server running on port ${PORT}`);
       logger.info(`✓ Environment: ${env.NODE_ENV}`);
