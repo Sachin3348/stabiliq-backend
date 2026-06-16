@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { couponService } from '../services/couponService';
 import { sendSuccess, sendError } from '../utils/response';
+import { MEMBERSHIP_PLANS } from '../utils/constants';
 import type { CreateCouponDto } from '../types/coupon';
 
 export const couponController = {
@@ -91,17 +92,19 @@ export const couponController = {
     try {
       if (!req.user) { sendError(res, 401, 'Not authenticated.'); return; }
 
-      const { code, context, amount } = req.body as {
+      const { code, context, plan } = req.body as {
         code?: string;
         context?: string;
-        amount?: number;
+        plan?: string;
       };
 
-      if (!code?.trim())          { sendError(res, 400, 'code is required.'); return; }
-      if (!context?.trim())       { sendError(res, 400, 'context is required.'); return; }
-      if (typeof amount !== 'number' || amount <= 0) {
-        sendError(res, 400, 'amount must be a positive integer (paise).'); return;
+      if (!code?.trim())    { sendError(res, 400, 'code is required.'); return; }
+      if (!context?.trim()) { sendError(res, 400, 'context is required.'); return; }
+      if (!plan?.trim() || !MEMBERSHIP_PLANS[plan as 'basic' | 'pro']) {
+        sendError(res, 400, 'plan must be basic or pro.'); return;
       }
+
+      const amount = MEMBERSHIP_PLANS[plan as 'basic' | 'pro'].totalAmount;
 
       const result = await couponService.validate(
         code.trim(),

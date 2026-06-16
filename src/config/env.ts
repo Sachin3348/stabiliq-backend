@@ -33,6 +33,8 @@ export const env = {
   AISENSY_API_KEY: process.env.AISENSY_API_KEY ?? '',
   AISENSY_CAMPAIGN_NAME: process.env.AISENSY_CAMPAIGN_NAME ?? '',
   AISENSY_USER_NAME: process.env.AISENSY_USER_NAME ?? '',
+  /** WhatsApp number for internal sales team lead notifications */
+  AISENSY_LEAD_NOTIFY_PHONE: process.env.AISENSY_LEAD_NOTIFY_PHONE ?? '',
 } as const;
 
 export type Env = typeof env;
