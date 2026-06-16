@@ -7,6 +7,7 @@ import type {
   CouponRedeemResult,
 } from '../types/coupon';
 import type { ICouponDoc } from '../models/Coupon';
+import { GST_RATE } from '../utils/constants';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -120,12 +121,16 @@ export const couponService = {
       }
     }
 
-    const discountAmount = calcDiscount(coupon, (originalAmount*100));
-    const finalAmount = Math.round((originalAmount - discountAmount) * 100) / 100;
+    const discountAmount = calcDiscount(coupon, originalAmount);
+    const discountedBase = Math.round((originalAmount - discountAmount) * 100) / 100;
+    const gstAmount = Math.round(discountedBase * GST_RATE * 100) / 100;
+    const finalAmount = Math.round((discountedBase + gstAmount) * 100) / 100;
 
     return {
       valid: true,
       discountAmount,
+      baseAmount: discountedBase,
+      gstAmount,
       finalAmount,
       couponId: coupon._id as mongoose.Types.ObjectId,
       code: coupon.code,
@@ -143,7 +148,7 @@ export const couponService = {
     userId: string,
     context: string,
     originalAmount: number
-  ): Promise<{ redemptionId: mongoose.Types.ObjectId; discountAmount: number; finalAmount: number }> {
+  ): Promise<{ redemptionId: mongoose.Types.ObjectId; discountAmount: number; baseAmount: number; gstAmount: number; finalAmount: number }> {
     const result = await this.validate(code, userId, context, originalAmount);
     if (!result.valid) throw new Error(result.reason);
 
@@ -163,6 +168,8 @@ export const couponService = {
     return {
       redemptionId: redemption._id as mongoose.Types.ObjectId,
       discountAmount: result.discountAmount,
+      baseAmount: result.baseAmount,
+      gstAmount: result.gstAmount,
       finalAmount: result.finalAmount,
     };
   },

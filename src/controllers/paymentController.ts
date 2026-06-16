@@ -12,7 +12,7 @@ export const paymentController = {
         ...body, 
         userId: String(req.user?.id) || '', 
         mobile: req.user?.mobile || '',
-        amount: MEMBERSHIP_PLANS[body.plan as 'basic' | 'pro'].totalAmount,
+        amount: MEMBERSHIP_PLANS[body.plan as 'basic' | 'pro'].amount,
       });
       if(!result.status){
         return sendError(res, 400, result.message || "Error while initiating payment");

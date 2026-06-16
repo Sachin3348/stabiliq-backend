@@ -20,8 +20,10 @@ export interface CreateCouponDto {
 // ── Validate result ──────────────────────────────────────────────────────────
 export interface CouponValidResult {
   valid: true;
-  discountAmount: number;   // paise
-  finalAmount: number;      // paise
+  discountAmount: number;
+  baseAmount: number;
+  gstAmount: number;
+  finalAmount: number;
   couponId: mongoose.Types.ObjectId;
   code: string;
 }

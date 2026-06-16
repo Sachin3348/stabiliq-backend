@@ -41,6 +41,10 @@ export interface CreatePaymentTransactionInput {
   gatewayOrderId?: string;
   plan?: 'basic' | 'pro';
   gateway?: 'phonepe' | 'cashfree';
+  baseAmount?: number;
+  gstAmount?: number;
+  discountAmount?: number;
+  couponCode?: string;
 }
 
 export interface PopulateOptions {

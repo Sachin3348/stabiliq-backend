@@ -104,7 +104,7 @@ export const couponController = {
         sendError(res, 400, 'plan must be basic or pro.'); return;
       }
 
-      const amount = MEMBERSHIP_PLANS[plan as 'basic' | 'pro'].totalAmount;
+      const { amount } = MEMBERSHIP_PLANS[plan as 'basic' | 'pro'];
 
       const result = await couponService.validate(
         code.trim(),

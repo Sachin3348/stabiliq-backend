@@ -60,15 +60,22 @@ export const paymentService = {
 
     let payableAmount = data.amount;
     let redemptionId: import('mongoose').Types.ObjectId | undefined;
+    let breakdownFields: { baseAmount?: number; gstAmount?: number; discountAmount?: number; couponCode?: string } = {};
 
     if (data.couponCode) {
       const reservation = await couponService.reserve(data.couponCode, data.userId, 'membership', data.amount);
       payableAmount = reservation.finalAmount;
       redemptionId = reservation.redemptionId;
+      breakdownFields = {
+        baseAmount: reservation.baseAmount,
+        gstAmount: reservation.gstAmount,
+        discountAmount: reservation.discountAmount,
+        couponCode: data.couponCode,
+      };
     }
 
     const result = gateway === 'cashfree'
-      ? await validateAndInitiatePaymentAtCashfree({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId })
+      ? await validateAndInitiatePaymentAtCashfree({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId, ...breakdownFields })
       : await validateAndInitiatePaymentAtPhonePe({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId });
     if(!result.status){
       if (redemptionId) await couponService.rollback(redemptionId);
