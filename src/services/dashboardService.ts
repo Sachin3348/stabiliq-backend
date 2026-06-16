@@ -12,7 +12,7 @@ export interface DashboardStatsResult {
 
 export const dashboardService = {
   async getStats(payload: JwtPayload): Promise<DashboardStatsResult> {
-    const user = await userRepository.findByEmail(payload.sub);
+    const user = await userRepository.findByPhone(payload.mobile);
     if (!user) {
       throw new AppError('User not found', 404);
     }
