@@ -20,7 +20,12 @@ export async function sendWhatsAppOtp(
   _: number,
 ): Promise<SendWhatsAppOtpResult> {
   try {
-    const to = phone.replace(/[^\d]/g, '');
+    let to = phone.replace(/[^\d]/g, '');
+    if (to.length === 10) {
+      to = `91${to}`;
+    } else if (to.length === 11 && to.startsWith('0')) {
+      to = `91${to.slice(1)}`;
+    }
     await axios.post(
       MSG91_API_URL,
       {
