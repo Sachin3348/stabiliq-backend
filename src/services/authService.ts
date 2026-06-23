@@ -4,8 +4,17 @@ import { createAccessToken } from '../middlewares/auth';
 import type { UserDto } from '../types/user';
 import type { JwtPayload } from '../types/auth';
 import { AppError } from '../middlewares/AppError';
-import { isAiSensyConfigured, sendWhatsAppOtpAsync } from '../commonservice/aisensyService';
+import { isAiSensyConfigured, sendWhatsAppOtpAsync as aisensySendOtpAsync } from '../commonservice/aisensyService';
+import { isMsg91Configured, sendWhatsAppOtpAsync as msg91SendOtpAsync } from '../commonservice/msg91Service';
 import { env } from '../config/env';
+
+function dispatchOtp(phone: string, otp: string, ttl: number): void {
+  if (env.OTP_PROVIDER === 'msg91' && isMsg91Configured()) {
+    msg91SendOtpAsync(phone, otp, ttl);
+  } else if (isAiSensyConfigured()) {
+    aisensySendOtpAsync(phone, otp, ttl);
+  }
+}
 
 export interface SendOtpResult {
   success: true;
@@ -41,9 +50,7 @@ export const authService = {
     const otp = generateOtp();
     await storeOtp(phone, otp);
 
-    if (isAiSensyConfigured()) {
-      sendWhatsAppOtpAsync(phone, otp, env.OTP_TTL_MINUTES);
-    }
+    dispatchOtp(phone, otp, env.OTP_TTL_MINUTES);
 
     return {
       success: true,
@@ -90,9 +97,7 @@ export const authService = {
     const otp = generateOtp();
     await storeOtp(phone, otp);
 
-    if (isAiSensyConfigured()) {
-      sendWhatsAppOtpAsync(phone, otp, env.OTP_TTL_MINUTES);
-    }
+    dispatchOtp(phone, otp, env.OTP_TTL_MINUTES);
 
     return {
       success: true,

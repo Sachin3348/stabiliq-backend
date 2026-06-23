@@ -29,12 +29,23 @@ export const env = {
   SMTP_PASS: process.env.SMTP_PASS ?? '',
   /** OTP validity in minutes (for email OTP) */
   OTP_TTL_MINUTES: parseInt(process.env.OTP_TTL_MINUTES ?? '10', 10),
+  /** OTP provider: 'aisensy' | 'msg91' */
+  OTP_PROVIDER: (process.env.OTP_PROVIDER ?? 'aisensy') as 'aisensy' | 'msg91',
   /** AiSensy WhatsApp OTP */
   AISENSY_API_KEY: process.env.AISENSY_API_KEY ?? '',
   AISENSY_CAMPAIGN_NAME: process.env.AISENSY_CAMPAIGN_NAME ?? '',
   AISENSY_USER_NAME: process.env.AISENSY_USER_NAME ?? '',
   /** WhatsApp number for internal sales team lead notifications */
   AISENSY_LEAD_NOTIFY_PHONE: process.env.AISENSY_LEAD_NOTIFY_PHONE ?? '',
+  /** MSG91 WhatsApp OTP */
+  MSG91_AUTH_KEY: process.env.MSG91_AUTH_KEY ?? '',
+  MSG91_TEMPLATE_ID: process.env.MSG91_TEMPLATE_ID ?? '',
+  MSG91_SENDER_ID: process.env.MSG91_SENDER_ID ?? '',
+  MSG91_INTEGRATED_NUMBER: process.env.MSG91_INTEGRATED_NUMBER ?? '918796463563',
+  MSG91_WA_TEMPLATE_NAME: process.env.MSG91_WA_TEMPLATE_NAME ?? 'stabiliq_otp',
+  MSG91_WA_NAMESPACE:
+    process.env.MSG91_WA_NAMESPACE ?? '625d987c_7b40_4d17_9c50_56a1e9db0609',
+  MSG91_WA_LANG_CODE: process.env.MSG91_WA_LANG_CODE ?? 'en',
 } as const;
 
 export type Env = typeof env;
