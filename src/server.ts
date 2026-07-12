@@ -17,6 +17,7 @@ import linkedinRoutes from './routes/linkedin';
 import targetedReviewRoutes from './routes/targetedReview';
 import couponRoutes from './routes/coupon';
 import leadRoutes from './routes/lead';
+import referralRoutes from './routes/referral';
 const SSE = require("express-sse");
 
 const app = express();
@@ -47,6 +48,7 @@ app.use('/api/linkedin', linkedinRoutes);
 app.use('/api/resume', targetedReviewRoutes);
 app.use('/api/coupons', couponRoutes);
 app.use('/api/leads', leadRoutes);
+app.use('/api/referral', referralRoutes);
 
 app.use(errorHandler);
 

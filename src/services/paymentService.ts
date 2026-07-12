@@ -8,6 +8,7 @@ import { validateAndInitiatePaymentAtPhonePe } from './phonepePaymentService';
 import { validateAndInitiatePaymentAtCashfree, checkCashfreePaymentStatus, initiateCashfreeRefund } from './cashfreePaymentService';
 import { calculateChecksum, convertJsonToBase64, delay, generateTransactionId, getPlan, timeStampToDateAndTimeWithSeconds } from '../utils';
 import { couponService } from './couponService';
+import { referralService } from './referralService';
 import { CHECK_PAYMENT_STATUS_RECONCILIATION_INTERVALS, CHECK_PAYMENT_STATUS_WAIT_TIME, PAYMENT_FAILED_STATUS } from '../utils/constants';
 import axios from 'axios';
 // const { sse } = require("../server");
@@ -380,6 +381,7 @@ async function processPayment(userId: string, merchantTransactionId: string, amo
   }
   await userRepository.findOneAndUpdate({_id: userId, isActive : true}, updateDetails)
   if (transactionDetails.redemptionId) await couponService.confirm(transactionDetails.redemptionId, merchantTransactionId)
+  referralService.processReferralRewardOnPayment(userId).catch(() => {})
 
   console.log(`${activity} | End | Processing application fee payment for userId: ${userId}, merchantTransactionId: ${merchantTransactionId}`)
 

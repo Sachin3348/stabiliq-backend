@@ -7,6 +7,7 @@ import { AppError } from '../middlewares/AppError';
 import { isAiSensyConfigured, sendWhatsAppOtpAsync as aisensySendOtpAsync } from '../commonservice/aisensyService';
 import { isMsg91Configured, sendWhatsAppOtpAsync as msg91SendOtpAsync } from '../commonservice/msg91Service';
 import { env } from '../config/env';
+import { referralService } from './referralService';
 
 function dispatchOtp(phone: string, otp: string, ttl: number): void {
   if (env.OTP_PROVIDER === 'msg91' && isMsg91Configured()) {
@@ -63,6 +64,7 @@ export const authService = {
     otp: string,
     name?: string,
     email?: string,
+    referralCode?: string,
   ): Promise<VerifyOtpResult> {
     const valid = await userOtpVerificationRepository.validateAndConsume(phone, otp);
     if (!valid) {
@@ -72,6 +74,15 @@ export const authService = {
     const enrollmentDate = new Date();
 
     if (user) {
+      if (!user.referralCode) {
+        await user.save().catch(() => {});
+        user = (await userRepository.findByPhone(phone)) ?? user;
+      }
+
+      if (referralCode && !user.referredByUserId) {
+        await referralService.attachReferralToUser(String(user._id), referralCode).catch(() => {});
+        user = (await userRepository.findByPhone(phone)) ?? user;
+      }
       const userData: UserDto = userRepository.toUserDto(user);
       const token = createAccessToken({ sub: phone, id: userData.id, mobile: phone });
       return { success: true, token, user: userData };
@@ -84,6 +95,11 @@ export const authService = {
       enrollmentDate,
       isActive: true,
     });
+
+    if (referralCode) {
+      referralService.attachReferralToUser(String(user._id), referralCode).catch(() => {});
+    }
+
     const userData: UserDto = userRepository.toUserDto(user);
     const token = createAccessToken({ sub: phone, id: userData.id, mobile: phone });
     return { success: true, token, user: userData };

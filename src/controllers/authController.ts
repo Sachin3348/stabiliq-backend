@@ -15,13 +15,14 @@ export const authController = {
 
   async verifyOtp(req: Request, res: Response, next: (err: unknown) => void): Promise<void> {
     try {
-      const { phone, otp, name, email } = req.body as {
+      const { phone, otp, name, email, referralCode } = req.body as {
         phone: string;
         otp: string;
         name?: string;
         email?: string;
+        referralCode?: string;
       };
-      const result = await authService.verifyOtp(phone, otp, name, email);
+      const result = await authService.verifyOtp(phone, otp, name, email, referralCode);
       sendSuccess(res, 200, result);
     } catch (err) {
       next(err);
