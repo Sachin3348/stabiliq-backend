@@ -48,6 +48,7 @@ export interface PaymentTransactionDto {
   plan?: 'basic' | 'pro';
   gateway?: 'phonepe' | 'cashfree';
   redemptionId?: string;
+  referralUserId?: string;
   createdAt?: string;
   updatedAt?: string;
 }

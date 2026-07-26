@@ -24,6 +24,7 @@ const paymentTransactionSchema = new mongoose.Schema(
     gstAmount: { type: Number },
     discountAmount: { type: Number },
     couponCode: { type: String },
+    referralUserId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   },
   { timestamps: true }
 );
@@ -52,6 +53,7 @@ export interface IPaymentTransactionDoc extends mongoose.Document {
   gstAmount?: number;
   discountAmount?: number;
   couponCode?: string;
+  referralUserId?: mongoose.Types.ObjectId;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -10,6 +10,7 @@ function toUserDto(doc: IUserDoc): UserDto {
     plan: doc.plan || '',
     enrollmentDate: doc.enrollmentDate ? doc.enrollmentDate.toISOString() : null,
     isActive: doc.isActive,
+    referredByUserId: doc.referredByUserId || null,
   };
 }
 

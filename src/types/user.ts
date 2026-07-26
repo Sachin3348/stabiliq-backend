@@ -9,6 +9,7 @@ export interface UserDto {
   plan?: string;
   enrollmentDate: string | null;
   isActive: boolean;
+  referredByUserId?: string | null;
 }
 
 export interface UserDocument {

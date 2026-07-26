@@ -29,7 +29,75 @@ export interface CreateTransactionInput {
   mobile: string;
   gateway?: 'phonepe' | 'cashfree';
   couponCode?: string;
+    referralUserId?: string;
 }
+
+const REFERRAL_FLAT_DISCOUNT = 500;
+
+type PaymentBreakdownFields = {
+    baseAmount?: number;
+    gstAmount?: number;
+    discountAmount?: number;
+    couponCode?: string;
+    referralUserId?: string;
+};
+
+function calculateFinalAmountWithFlatDiscount(baseAmount: number, flatDiscount: number) {
+    const discountAmount = Math.min(flatDiscount, baseAmount);
+    const discountedBase = Math.round((baseAmount - discountAmount) * 100) / 100;
+    const gstAmount = Math.round(discountedBase * 0.18 * 100) / 100;
+    const finalAmount = Math.round((discountedBase + gstAmount) * 100) / 100;
+
+    return {
+        discountAmount,
+        baseAmount: discountedBase,
+        gstAmount,
+        finalAmount,
+    };
+}
+
+async function resolvePaymentDiscount(
+    data: Pick<CreateTransactionInput, 'amount' | 'userId' | 'couponCode' | 'referralUserId'>
+): Promise<{ payableAmount: number; redemptionId?: import('mongoose').Types.ObjectId; breakdownFields: PaymentBreakdownFields }> {
+    if (data.couponCode) {
+        const reservation = await couponService.reserve(data.couponCode, data.userId, 'membership', data.amount);
+        return {
+            payableAmount: reservation.finalAmount,
+            redemptionId: reservation.redemptionId,
+            breakdownFields: {
+                baseAmount: reservation.baseAmount,
+                gstAmount: reservation.gstAmount,
+                discountAmount: reservation.discountAmount,
+                couponCode: data.couponCode,
+            },
+        };
+    }
+
+    if (!data.referralUserId) {
+        return { payableAmount: data.amount, breakdownFields: {} };
+    }
+
+    if (data.referralUserId === data.userId) {
+        throw new AppError('Invalid referral user.', 400);
+    }
+
+    const referrer = await userRepository.findOne({ _id: data.referralUserId, isActive: true });
+    if (!referrer) {
+        throw new AppError('Invalid referral user.', 400);
+    }
+
+    const pricing = calculateFinalAmountWithFlatDiscount(data.amount, REFERRAL_FLAT_DISCOUNT);
+    return {
+        payableAmount: pricing.finalAmount,
+        breakdownFields: {
+            baseAmount: pricing.baseAmount,
+            gstAmount: pricing.gstAmount,
+            discountAmount: pricing.discountAmount,
+            referralUserId: data.referralUserId,
+        },
+    };
+}
+
 async function isTransactionIdUnique(merchantTransactionId: string): Promise<boolean> {
     const existingTransaction = await paymentTransactionRepository.findOne({ merchantTransactionId });
     return !existingTransaction;
@@ -59,25 +127,16 @@ export const paymentService = {
         return {status: false, message: "User already has an active plan"}
     }
 
-    let payableAmount = data.amount;
-    let redemptionId: import('mongoose').Types.ObjectId | undefined;
-    let breakdownFields: { baseAmount?: number; gstAmount?: number; discountAmount?: number; couponCode?: string } = {};
-
-    if (data.couponCode) {
-      const reservation = await couponService.reserve(data.couponCode, data.userId, 'membership', data.amount);
-      payableAmount = reservation.finalAmount;
-      redemptionId = reservation.redemptionId;
-      breakdownFields = {
-        baseAmount: reservation.baseAmount,
-        gstAmount: reservation.gstAmount,
-        discountAmount: reservation.discountAmount,
-        couponCode: data.couponCode,
-      };
-    }
+        const { payableAmount, redemptionId, breakdownFields } = await resolvePaymentDiscount({
+            amount: data.amount,
+            userId: data.userId,
+            couponCode: data.couponCode,
+            referralUserId: data.referralUserId,
+        });
 
     const result = gateway === 'cashfree'
       ? await validateAndInitiatePaymentAtCashfree({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId, ...breakdownFields })
-      : await validateAndInitiatePaymentAtPhonePe({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId });
+            : await validateAndInitiatePaymentAtPhonePe({ amount: payableAmount, userId: data.userId, mobile: data.mobile, plan: data.plan, redemptionId, ...breakdownFields });
     if(!result.status){
       if (redemptionId) await couponService.rollback(redemptionId);
       throw new AppError(result.message || 'Error while initiating payment request', 400);

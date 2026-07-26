@@ -20,6 +20,7 @@ function toDto(doc: IPaymentTransactionDoc): PaymentTransactionDto {
     isPaymentProcessed: doc.isPaymentProcessed,
     gatewayOrderId: doc.gatewayOrderId,
     plan: doc.plan as 'basic' | 'pro' | undefined,
+    referralUserId: doc.referralUserId?.toString(),
     createdAt: doc.createdAt?.toISOString(),
     updatedAt: doc.updatedAt?.toISOString(),
   };
@@ -45,6 +46,7 @@ export interface CreatePaymentTransactionInput {
   gstAmount?: number;
   discountAmount?: number;
   couponCode?: string;
+  referralUserId?: string;
 }
 
 export interface PopulateOptions {
@@ -76,6 +78,7 @@ export const paymentTransactionRepository = {
       ...data,
       userId: data.userId ? new mongoose.Types.ObjectId(data.userId) : undefined,
       refundId: data.refundId ? new mongoose.Types.ObjectId(data.refundId) : undefined,
+      referralUserId: data.referralUserId ? new mongoose.Types.ObjectId(data.referralUserId) : undefined,
     });
     await doc.save();
     return doc;

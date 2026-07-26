@@ -26,7 +26,7 @@ async function generateUniqueTransactionId() {
 
 //PhonpePe PAY API: https://developer.phonepe.com/v1/reference/pay-api-1/
 //Initiate new transaction at PhonePe and returns the PhonePe checkout page url for payment
-export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobile, plan, redemptionId}: {amount: number, userId: string, mobile: string, plan?: 'basic' | 'pro', redemptionId?: import('mongoose').Types.ObjectId}): Promise<{status: boolean, checkoutPageUrl?: string, message?: string; paymentSessionId?: string; }> {
+export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobile, plan, redemptionId, baseAmount, gstAmount, discountAmount, couponCode, referralUserId}: {amount: number, userId: string, mobile: string, plan?: 'basic' | 'pro', redemptionId?: import('mongoose').Types.ObjectId, baseAmount?: number, gstAmount?: number, discountAmount?: number, couponCode?: string, referralUserId?: string}): Promise<{status: boolean, checkoutPageUrl?: string, message?: string; paymentSessionId?: string; }> {
     const merchantTransactionId = await generateUniqueTransactionId();
     let merchantId = process.env.PST_PHONEPE_MERCHANT_ID
     let saltKey = process.env.PST_PHONEPE_SALT_KEY
@@ -76,6 +76,11 @@ export async function validateAndInitiatePaymentAtPhonePe({amount, userId, mobil
         type: TRANSACTION_TYPE.payment,
         ...(plan && { plan }),
         ...(redemptionId && { redemptionId }),
+        ...(baseAmount !== undefined && { baseAmount }),
+        ...(gstAmount !== undefined && { gstAmount }),
+        ...(discountAmount !== undefined && { discountAmount }),
+        ...(couponCode && { couponCode }),
+        ...(referralUserId && { referralUserId }),
     }
     await paymentTransactionRepository.create(transactionDetails)
     return {status: true, checkoutPageUrl }
